@@ -19,17 +19,17 @@
                       ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
                       ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
                       └──► arena.py: blind pairs from stored answers, votes, ratings
- agent_tools.py: one catalogue (45 tools) ──► api/agent.py (Bearer token) · api/ui.py (local) · mcp_server.py (stdio bridge)
- scheduler.py: lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
+ agent_tools.py: one catalogue (45 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
+ scheduler.py (hoard_link.lanes): lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
 ```
 
 ## Layout
 
 | Path | Role |
 |---|---|
-| `galton_hoard/main.py` | App factory: guard middleware, error handlers, routers, single-page client |
-| `galton_hoard/config.py` | Process settings from the environment (`GALTON_*`, `HOARD_ROUTES_FILE`) and `.env`; paths under `data/` |
-| `galton_hoard/db.py`, `store.py` | Schema and migrations (SQLite, WAL); every query |
+| `galton_hoard/__main__.py`, `main.py` | `python -m galton_hoard` is the shared launcher (`service.run_main`: one running copy, port search, rotating log); `main.py` is the app factory: shared guard, error envelope (plus the handler of `GaltonError` that adds the translatable parts for the UI), routers, shared health route, PWA files and single-page client |
+| `galton_hoard/config.py` | Process settings from the environment (`GALTON_*`, `HOARD_ROUTES_FILE`) with the shared readers, and `.env` (its secrets are never exported to the environment); paths under `data/` from the shared layout |
+| `galton_hoard/db.py`, `store.py` | The migrations (the connection is the shared `sqlkit.Database`: WAL, foreign keys, re-entrant transactions); every query. New ids are lowercase ULIDs (`util.new_id`), older ids keep working |
 | `galton_hoard/settings.py` | Typed settings with bounds; reserved GPUs need a confirmation; secrets are masked when listed |
 | `galton_hoard/identity.py` | Identity of a server contestant (address, model ids, alias, model file, Ollama digest): `judge`, the 20 s guard, TOFU pin for hand-given specs, the `not_served` mark |
 | `galton_hoard/discovery.py` | Finds models and keeps contestants in step; nothing is deleted, a vanished model is marked missing |
@@ -38,7 +38,7 @@
 | `galton_hoard/placement.py` | Context choice, memory estimate and where a model would run (GPU or CPU, `cpu_eligible`), for the UI and the plan |
 | `galton_hoard/cpu.py` | Physical cores, threads for a CPU run (cores − 2, at least 2) and free RAM, read without psutil when it is not installed |
 | `galton_hoard/gpus.py` | Allowed and reserved GPUs, planning, a lease per GPU, tensor split, honest "does not fit" errors |
-| `galton_hoard/servers.py`, `procs.py`, `port.py` | Own llama-server launcher (ports 8091-8099), process tree kill, registry of children, probes of running servers |
+| `galton_hoard/servers.py`, `procs.py` | Own llama-server launcher (ports 8091-8099; children start through `hoard_link.proc`), process tree kill, registry of children (written atomically), probes of running servers |
 | `galton_hoard/backends.py` | Streaming clients for chat-completions servers and Ollama with timings; tool fallback; reasoning-field retry |
 | `galton_hoard/idle.py` | Waiting politely for a shared server: `wait_until_idle`, `LlamaGuard`, `OllamaGuard` |
 | `galton_hoard/runner.py` | Runs: sessions, progress, cancel, skip reasons, judge hand-over, per-run settings. Sessions on a shared server are guarded: answers are held in memory and stored only after a look made after them still finds the same model; otherwise they are dropped (`warn_results_dropped`) and the contestant stops with `server_changed` |
@@ -50,14 +50,14 @@
 | `galton_hoard/stats.py` | Intervals, paired tests, speed summaries, arena ratings |
 | `galton_hoard/board.py` | Leaderboard, comparison and recommendation, computed at request time |
 | `galton_hoard/routes.py` | The routing policy and the published `routes.json` |
-| `galton_hoard/watch.py`, `scheduler.py` | Regression watch and the two background lanes |
+| `galton_hoard/watch.py`, `scheduler.py` | Regression watch (quiet hours from `notify_channels.in_quiet_hours`) and the two background lanes: `scheduler.py` maps Galton's job kinds onto the shared `LaneScheduler` |
 | `galton_hoard/arena.py` | Blind pairs, votes, ratings |
 | `galton_hoard/services.py` | Wires everything from a `Config`; dashboard, status and overview views |
-| `galton_hoard/agent_tools.py` | The tool catalogue: name, description, pydantic arguments, annotations, handler |
-| `galton_hoard/api/` | REST: `agent.py`, `ui.py`, `runs.py` (events of a run), `health.py`, `pwa.py` |
+| `galton_hoard/agent_tools.py` | The tool catalogue: name, description, pydantic arguments, annotations, handler (the `Tool` type, the result cap and `call_tool` come from `hoard_link.agentkit`) |
+| `galton_hoard/api/` | REST: `agent.py` (the shared agent router; it also reads the `caller` of a call), `ui.py`, `runs.py` (events of a run), `health.py` (`/api/status`; `/api/health` is the shared route) |
 | `galton_hoard/fakes.py` | Fake GPUs, leases, launcher and models for the tests and the demo mode |
 | `galton_hoard/hoard_link/` | Vendored family library (event bus, leases, calls to other apps). Not edited here |
-| `mcp_server.py` | stdio bridge: proxies to the running app, starts it when needed |
+| `mcp_server.py` | The shared stdio bridge (`hoard_link.bridge.CatalogBridge`, default timeout 660 s): proxies to the running app, refreshes the tool list, starts the app when needed |
 | `client/` | React 19 + Vite 6 + Tailwind 4 UI; built into `galton_hoard/static` |
 
 ## Models (contestants)
@@ -85,7 +85,7 @@ Results of the same case are averaged first: the case is the unit and repeats on
 
 ## Routing table
 
-`routes.py` evaluates each task category (`general`, `code`, `extraction`, `tool_use`, `long_context`, `rag`, `vision`, `summary`, `translation`, `math`, `writing_es`) against the suites that belong to it, applying the policy in `routes.policy`. `routes_get` shows the proposed table, the published one and the difference; `routes_publish` writes the file with a temporary file and `os.replace`, records the publication and emits `galton.routes.updated`. The file lives where Hoard Link reads it: `HOARD_ROUTES_FILE`, else `routes.json` in `HOARD_HOME`, else `~/.hoard/routes.json` (a test loads the published file with the vendored reader). The schema is `{schema: 1, source: "galton", updated_at, tasks: {name: {capability, prefer: [{names, score, ci, n, tok_s, vram_gb}], explain}}, capabilities: {llm, vision}}`.
+`routes.py` evaluates each task category (`general`, `code`, `extraction`, `tool_use`, `long_context`, `rag`, `vision`, `summary`, `translation`, `math`, `writing_es`) against the suites that belong to it, applying the policy in `routes.policy`. `routes_get` shows the proposed table, the published one and the difference; `routes_publish` writes the file with the shared atomic writer (temporary file, replace with retries while a reader holds it), records the publication and emits `galton.routes.updated`. The file lives where Hoard Link reads it: `HOARD_ROUTES_FILE`, else `routes.json` in `HOARD_HOME`, else `~/.hoard/routes.json` (a test loads the published file with the vendored reader). The schema is `{schema: 1, source: "galton", updated_at, tasks: {name: {capability, prefer: [{names, score, ci, n, tok_s, vram_gb}], explain}}, capabilities: {llm, vision}}`.
 
 ## Watch
 
@@ -105,7 +105,7 @@ Hash routing (`#/`, `#/modelos`, `#/pruebas/<suite>`, `#/ejecutar/<run>`, `#/cla
 
 ## Data
 
-Everything lives in `data/` (or `GALTON_DATA_DIR`): `galton.db`, `images/`, `cache/`, `logs/` (llama-server logs and the rotating `galton.log`; `startup.py` keeps start-up safe without a console), `servers.json`, `mcp-token`, `url`.
+Everything lives in `data/` (or `GALTON_DATA_DIR`): `galton.db`, `images/`, `cache/`, `logs/` (llama-server logs and the rotating `galton-hoard.log`; the shared launcher keeps start-up safe without a console), `servers.json`, `mcp-token`, `url`.
 
 ## Shared servers, discarded runs and cancelling
 

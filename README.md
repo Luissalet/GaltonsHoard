@@ -66,13 +66,13 @@ python scripts/launch.py                                      # free port, opens
 
 Demo mode shows the whole app without touching hardware: `GALTON_FAKE=1 python -m galton_hoard` uses invented GPUs and three models that answer from a table, and publishes to `data/routes-demo.json`.
 
-The UI is Spanish or English; the messages of the backend (errors with their hints, plan lines, run warnings, notices) reach it as a stable key plus parameters and are formatted in the chosen language, while assistants always get the English sentence. Without a console (`pythonw`) the start-up messages go to the log only.
+The UI is Spanish or English; the messages of the backend (errors with their hints, plan lines, run warnings, notices) reach it as a stable key plus parameters and are formatted in the chosen language, while assistants always get the English sentence. Without a console (`pythonw`) the start-up messages go to the log only. Starting is the shared launcher of Hoard Link: a second copy exits at once without touching the data folder of the first, and `PORT_STRICT=1` refuses a taken port.
 
 Environment: `GALTON_PORT` (5201), `GALTON_DATA_DIR`, `PORT_STRICT=1`, `GALTON_ALLOWED_HOSTS`, `GALTON_HTTP_TIMEOUT_S`, `GALTON_SCHEDULER=0` (no background jobs), `GALTON_OFFLINE=1` (no discovery), `GALTON_FAKE=1` (demo), `HOARD_ROUTES_FILE`, and `GALTON_FAUSTUS_TOKEN` in `.env` (see `.env.example`). Everything else is a setting stored in `data/galton.db` and changed in the app.
 
 ## Assistants (MCP)
 
-`mcp_server.py` is a stdio MCP bridge named `galton-hoard`. It never opens the database: it proxies every call to the running app with the token in `data/mcp-token`, and starts the app when it is not answering. `faustus-plugin.json` describes the app, its health check and the bridge for Faustus and the Hoard Hub.
+`mcp_server.py` is a stdio MCP bridge named `galton-hoard` (the shared bridge of Hoard Link). It never opens the database: it proxies every call to the running app with the token in `data/mcp-token`, refreshes the tool list while it runs, and starts the app when it is not answering. Calls may take up to 660 seconds; the tools that wait for a run (`wait_s`, up to 600 seconds) or for the judge say so in the catalogue, and a run that outlasts `wait_s` answers `still_running: true` and goes on. `faustus-plugin.json` describes the app, its health check and the bridge for Faustus and the Hoard Hub.
 
 Tools (45): `galton_overview`, `galton_status`, `models_list`, `models_refresh`, `model_get`, `model_add`, `model_update`, `model_remove`, `suites_list`, `suite_get`, `case_get`, `suite_create`, `suite_update`, `suite_duplicate`, `suite_remove`, `case_add`, `case_update`, `case_remove`, `cases_import`, `case_try`, `run_plan`, `run_start`, `run_status`, `run_cancel`, `run_discard`, `run_restore`, `run_resume`, `runs_list`, `run_results`, `measure_new`, `galton_run`, `judge_run`, `leaderboard`, `compare`, `recommend`, `routes_get`, `routes_publish`, `arena_next`, `arena_vote`, `arena_ratings`, `settings_get`, `settings_set`, `gpu_status`, `notices_list`, `housekeeping_run`. Arguments in [docs/API.md](docs/API.md).
 
@@ -80,7 +80,7 @@ Events on the family bus: `galton.routes.updated` (the published table changed),
 
 ## Data and privacy
 
-Everything lives in `data/` (or `GALTON_DATA_DIR`): `galton.db` (models, suites, runs, results, settings), `images/` (images attached to your cases), `logs/` (one llama-server log per model, and `galton.log`, a rotating log of the app itself, which is what remains when it is started without a console), `cache/`, `servers.json` (the llama-server processes Galton started, so a crash cannot leave a model loaded: they are stopped at the next start), `mcp-token` and `url`. Nothing leaves the computer: the app listens on 127.0.0.1 only, rejects cross-site requests, and calls only local servers unless you enable a remote endpoint for a model. The prompts and answers of your own cases are stored as they are; do not put secrets in them. Back up the folder to back up the app.
+Everything lives in `data/` (or `GALTON_DATA_DIR`): `galton.db` (models, suites, runs, results, settings), `images/` (images attached to your cases), `logs/` (one llama-server log per model, and `galton-hoard.log`, a rotating log of the app itself, which is what remains when it is started without a console), `cache/`, `servers.json` (the llama-server processes Galton started, so a crash cannot leave a model loaded: they are stopped at the next start), `mcp-token` and `url`. Nothing leaves the computer: the app listens on 127.0.0.1 only, rejects cross-site requests, and calls only local servers unless you enable a remote endpoint for a model. The prompts and answers of your own cases are stored as they are; do not put secrets in them. Back up the folder to back up the app.
 
 ## Development
 
