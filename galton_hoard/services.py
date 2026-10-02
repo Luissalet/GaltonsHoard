@@ -358,7 +358,8 @@ class Services:
             queued = sorted(self.store.runs(states=("queued",), limit=200), key=lambda r: r["created_ts"])
             ids = [r["id"] for r in queued]
             position = (ids.index(run["id"]) + 1 + (1 if self.runner.active_run else 0)) if run["id"] in ids else None
-        return {"id": run["id"], "label": run["label"], "state": run["state"], "source": run["source"], "caller": run["caller"], "created_ts": run["created_ts"],
+        earlier = self.store.find_run(run["continues"]) if run.get("continues") else None
+        return {"id": run["id"], "label": run["label"], "state": run["state"], "source": run["source"], "continues": run.get("continues", ""), "continues_label": earlier["label"] if earlier else "", "caller": run["caller"], "created_ts": run["created_ts"],
                 "started_ts": run["started_ts"], "finished_ts": run["finished_ts"], "error": run["error"], "settings": run["settings"], "suites": suites, "contestants": contestants,
                 "progress": {"done": done, "total": total, "pct": round(100 * done / total, 1) if total else 0.0}, "summary": run["summary"],
                 "active": run["id"] == self.runner.active_run, "queue_position": position, "pending_judge": len(self.store.pending_judge(run["id"])) if run["state"] in ("done", "cancelled") else 0,
@@ -539,14 +540,31 @@ class Services:
         rs = normalise_settings(settings)
         rows = self.runner.resolve_contestants(contestants)
         problems = self.preflight(rows, rs)
+        self._refuse_hopeless(rows, problems)
+        run = self.runner.create(suites=suites, contestants=[c["id"] for c in rows], settings=rs, label=label, source=source, caller=caller)
+        self.submit_run(run["id"], wait_s)
+        return {"run": self.run_card(self.store.run(run["id"])), "warnings": [text("warn_will_fail", name=p["name"], problem=p["problem"]) for p in problems]}
+
+    @staticmethod
+    def _refuse_hopeless(rows: list[dict[str, Any]], problems: list[dict[str, Any]]) -> None:
+        """A run in which every model is a file that cannot be run at all is refused with the first reason, instead of being created to fail."""
         if problems and len(problems) == len([c for c in rows if c["kind"] == "gguf"]) == len(rows):
             first = problems[0]
             if first["key"]:
                 raise GaltonError(first["code"], first["key"], **{**first["params"], "problems": problems})
             raise GaltonError(first["code"], first["problem"], first["hint"], problems=problems)
-        run = self.runner.create(suites=suites, contestants=[c["id"] for c in rows], settings=rs, label=label, source=source, caller=caller)
+
+    def resume_run(self, ref: str, *, source: str = "ui", caller: str = "", wait_s: float = 0.0) -> dict[str, Any]:
+        """Queue a run that finishes an interrupted one (failed or cancelled): same suites, models and settings, asking only the cases it did not measure."""
+        earlier = self.store.run(ref)
+        self.runner.ensure_resumable(earlier)
+        rs = normalise_settings(earlier["settings"])
+        rows = [c for c in (self.store.find_contestant(cid) for cid in earlier["contestants"]) if c is not None]
+        problems = self.preflight([c for c in rows if c["enabled"] and not c["missing"]], rs)
+        self._refuse_hopeless(rows, problems)
+        run = self.runner.resume(earlier["id"], source=source, caller=caller)
         self.submit_run(run["id"], wait_s)
-        return {"run": self.run_card(self.store.run(run["id"])), "warnings": [text("warn_will_fail", name=p["name"], problem=p["problem"]) for p in problems]}
+        return {"run": self.run_card(self.store.run(run["id"])), "continues": earlier["id"], "warnings": [text("warn_will_fail", name=p["name"], problem=p["problem"]) for p in problems]}
 
     def measure_new(self, *, suite: str = SMOKE_SUITE, include_stale: bool = True, source: str = "ui", caller: str = "") -> dict[str, Any]:
         """Run the quick suite on every enabled model that was never measured on it, or whose file changed since."""

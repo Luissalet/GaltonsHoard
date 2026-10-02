@@ -23,7 +23,7 @@ CASE_FIELDS = ("suite_id", "position", "title", "prompt", "images", "tools", "ch
                "max_tokens", "min_context")
 RUN_JSON = ("suites", "contestants", "settings", "summary")
 RUN_FIELDS = ("label", "state", "suites", "contestants", "settings", "source", "caller", "started_ts", "finished_ts", "error", "cancel", "summary", "discarded",
-              "discard_reason", "discarded_ts")
+              "discard_reason", "discarded_ts", "continues")
 RC_JSON = ("gpus", "warnings")
 RC_FIELDS = ("state", "error", "load_ms", "vram_mb", "vram_method", "gpus", "context", "warnings", "total", "done", "digest", "runs_on", "spill",
              "started_ts", "finished_ts", "wait_since", "waited_s", "device")
@@ -407,6 +407,16 @@ class Store:
             params.append(contestant_id)
         row = self.db.one(sql, params)
         return {k: int(row[k] or 0) for k in ("n", "passed", "skipped", "unavailable", "errors", "truncated")} if row else {}
+
+    def measured_keys(self, run_ids: Iterable[str], contestant_id: str, digest: str) -> set[tuple[str, str, int]]:
+        """``{(suite_id, case_id, repeat)}`` the contestant has a usable result for in these runs, measured on this digest: not skipped, not
+        unavailable, no error. A result waiting for the judge counts. Results of discarded runs are left out."""
+        ids = list(run_ids)
+        if not ids:
+            return set()
+        rows = self.db.query(f"SELECT DISTINCT suite_id, case_id, repeat FROM results WHERE run_id IN ({', '.join('?' for _ in ids)}) AND contestant_id = ? AND digest = ? "
+                             f"AND skipped = 0 AND unavailable = 0 AND error = '' AND {LIVE}", [*ids, contestant_id, digest])
+        return {(r["suite_id"], r["case_id"], int(r["repeat"])) for r in rows}
 
     def pending_judge(self, run_id: str = "") -> list[dict[str, Any]]:
         """Results waiting for the judge (of one run, or of all)."""

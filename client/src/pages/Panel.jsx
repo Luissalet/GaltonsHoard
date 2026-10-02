@@ -12,7 +12,7 @@ function RunningCard({ run }) {
     <a href={`#/ejecutar/${run.id}`} className="panel block space-y-2" style={{ textDecoration: "none", color: "inherit" }}>
       <div className="flex flex-wrap items-center gap-2">
         <StateChip state={run.state} />
-        <b className="min-w-0 flex-1" style={{ overflowWrap: "anywhere" }}>{run.label}</b>
+        <b className="min-w-0 flex-1" style={{ overflowWrap: "anywhere" }}>{t.msg(run.label)}</b>
         <span className="num help">{run.progress.done}/{run.progress.total} · {num(run.progress.pct, 0)} %</span>
       </div>
       <Progress done={run.progress.done} total={run.progress.total} />
@@ -95,7 +95,7 @@ export default function Panel() {
       {dash.demo && <div className="banner banner-info">{t("demo_banner")}</div>}
 
       <RunningCard run={dash.running} />
-      {dash.queued?.length > 0 && <div className="help">{t("queued_runs", { n: dash.queued.length })}: {dash.queued.map((r) => r.label).join(" · ")}</div>}
+      {dash.queued?.length > 0 && <div className="help">{t("queued_runs", { n: dash.queued.length })}: {dash.queued.map((r) => t.msg(r.label)).join(" · ")}</div>}
 
       <Notices notices={dash.notices || []} onSeen={seen} />
 
@@ -154,7 +154,7 @@ export default function Panel() {
             {dash.recent_runs.map((r) => (
               <a key={r.id} href={`#/ejecutar/${r.id}`} className="panel panel-tight flex flex-wrap items-center gap-2" style={{ textDecoration: "none", color: "inherit" }}>
                 <StateChip state={r.state} />
-                <span className="min-w-0 flex-1" style={{ overflowWrap: "anywhere" }}>{r.label}</span>
+                <span className="min-w-0 flex-1" style={{ overflowWrap: "anywhere" }}>{t.msg(r.label)}</span>
                 <span className="help num">{r.progress.done}/{r.progress.total}</span>
                 <span className="help"><Rel ts={r.finished_ts || r.created_ts} /></span>
               </a>

@@ -108,6 +108,10 @@ ERRORS: dict[str, tuple[str, str]] = {
     "server_not_ready": ("llama-server did not become ready within {seconds} s.", "Last log lines: {log_tail}"),
     "no_run": ("No run {id}.", "List runs with run_status."),
     "run_not_finished": ("Run {id} is still {state}.", "Cancel it with run_cancel and discard it once it has stopped."),
+    "run_not_resumable": ("Run {id} is {state}, so it cannot be continued.",
+                          "Only a run that failed or was cancelled can be continued: a finished run has nothing left, and one that is still going is not interrupted."),
+    "run_discarded_not_resumable": ("Run {id} was discarded, so it cannot be continued.", "Restore it with run_restore first, or start a new run."),
+    "run_nothing_left": ("Nothing is left to continue in run {id}: every case was already measured for the models as they are now.", "Start a new run if you want to measure them again."),
     "no_run_contestant": ("No contestant {contestant} in run {run}.", ""),
     "no_runs": ("There are no runs yet.", "Start one with run_start."),
     "run_unknown_settings": ("Unknown run settings: {names}.", "Known: {options}."),
@@ -166,6 +170,7 @@ TEXTS: dict[str, str] = {
     "runs_on_ollama_loaded": "ollama {url} (loaded by Galton)",
     # notes and warnings of a plan or a run
     "note_vision_dropped": "{n} vision case(s) were not run: {name} has no vision",
+    "note_resumed": "{n} cases already measured in the earlier run are not asked again",
     "warn_split": "split across GPUs {gpus} ({split})",
     "warn_cpu": "Measured on the CPU ({threads} threads), not on a GPU: its speed is not comparable with GPU numbers",
     "warn_ollama_gpu": "Ollama decides which GPU it loads the model on; the lease only reserves the memory",
@@ -211,6 +216,7 @@ TEXTS: dict[str, str] = {
     "board_unequal_results": "{a} has {who_a} and {b} has {who_b} checked results in {label}.",
     # routes
     "label_watch": "watch: {name}",
+    "label_continued": "{label} (continued)",
     "label_measure_new": "Measure what is new ({n})",
     "measure_new_none": "Every enabled model already has results on {name} for its current version.",
     "model_removed_note": "It is back after the next refresh if it is still installed; use model_update enabled=false to keep it out of the way instead.",

@@ -231,6 +231,10 @@ MIGRATIONS: list[str] = [
     ALTER TABLE run_contestants ADD COLUMN device TEXT NOT NULL DEFAULT '';
     ALTER TABLE results ADD COLUMN cpu INTEGER NOT NULL DEFAULT 0;
     """,
+    # 6: a run that continues an interrupted one (failed or cancelled): the id of the run it continues, so that the cases already measured are not asked again
+    """
+    ALTER TABLE runs ADD COLUMN continues TEXT NOT NULL DEFAULT '';
+    """,
 ]
 
 

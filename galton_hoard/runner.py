@@ -23,7 +23,7 @@ from . import adhoc, cpu as cpu_lib, gguf_meta, identity, placement, suites as s
 from .backends import Backend, Cancelled, ChatRequest, Completion
 from .checkers import CheckContext, ModelOutput, run_checker
 from .errors import GaltonError
-from .messages import text
+from .messages import recognise, text
 from .gpus import GpuManager
 from .hoard_link import reasoning
 from .identity import IdentityGuard
@@ -33,6 +33,10 @@ from .servers import LaunchSpec, probe_openai, slots_busy
 
 log = logging.getLogger("galton.runner")
 
+#: states of a run that stopped before it was done; only these can be continued
+RESUMABLE = ("failed", "cancelled")
+#: the longest label a run gets when it is created from another one (the label of the run it continues, plus the suffix)
+LABEL_MAX = 80
 RUN_DEFAULTS: dict[str, Any] = {"temperature": 0.0, "top_p": None, "max_tokens": None, "effort": None, "repeats": 1, "seed": None, "context": None, "timeout_s": None, "wait_s": None, "device": "auto"}
 DEVICES = ("auto", "gpu", "cpu")
 TERMINAL = ("done", "failed", "cancelled")
@@ -146,22 +150,54 @@ class Runner:
             raise GaltonError("invalid", "no_suite_chosen")
         return out
 
-    def plan_cases(self, contestant: dict[str, Any], suites: list[dict[str, Any]], settings: dict[str, Any]) -> tuple[list[tuple[dict, dict, int]], list[str]]:
-        """``[(suite, case, repeat)]`` for this contestant, and notes about cases left out (vision cases for a model without eyes)."""
+    def continued_chain(self, continues: str) -> list[dict[str, Any]]:
+        """The runs a run continues, nearest first: the run ``continues`` names, the run that one continues, and so on. A loop in the links, or a
+        run that was deleted, ends the walk."""
+        chain: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        ref = (continues or "").strip()
+        while ref and ref not in seen:
+            seen.add(ref)
+            earlier = self.store.find_run(ref)
+            if earlier is None:
+                break
+            chain.append(earlier)
+            ref = earlier["continues"]
+        return chain
+
+    def measured_before(self, continues: str, contestant: dict[str, Any]) -> set[tuple[str, str, int]]:
+        """``{(suite_id, case_id, repeat)}`` this contestant already has a usable result for in the runs ``continues`` leads back to: measured on the
+        digest it has now, not skipped, not unavailable, without an error. Results waiting for the judge count (they are graded later). The results
+        of a discarded run do not count: they are in no statistic, so the case still has to be measured."""
+        ids = [r["id"] for r in self.continued_chain(continues)]
+        return self.store.measured_keys(ids, contestant["id"], contestant["digest"]) if ids else set()
+
+    def plan_cases(self, contestant: dict[str, Any], suites: list[dict[str, Any]], settings: dict[str, Any],
+                   continues: str = "") -> tuple[list[tuple[dict, dict, int]], list[str]]:
+        """``[(suite, case, repeat)]`` for this contestant, and notes about cases left out (vision cases for a model without eyes, and, for a run that
+        ``continues`` another, the cases already measured in the runs it leads back to)."""
         planned, notes = [], []
-        dropped = 0
+        dropped = reused = 0
+        measured = self.measured_before(continues, contestant) if continues else set()
         for suite in suites:
             for case in self.store.cases(suite["id"]):
                 if suite_lib.needs_vision(case) and not contestant["vision"]:
                     dropped += 1
                     continue
                 for repeat in range(int(settings["repeats"])):
+                    if (suite["id"], case["id"], repeat) in measured:
+                        reused += 1
+                        continue
                     planned.append((suite, case, repeat))
         if dropped:
             notes.append(text("note_vision_dropped", n=dropped, name=contestant["name"]))
+        if reused:
+            notes.append(text("note_resumed", n=reused))
         return planned, notes
 
-    def create(self, *, suites: list[str], contestants: list[Any], settings: Optional[dict[str, Any]] = None, label: str = "", source: str = "ui", caller: str = "") -> dict[str, Any]:
+    def create(self, *, suites: list[str], contestants: list[Any], settings: Optional[dict[str, Any]] = None, label: str = "", source: str = "ui", caller: str = "",
+               continues: str = "") -> dict[str, Any]:
+        """Queue a run. ``continues`` is the id of an interrupted run this one finishes: the cases it already measured are not planned again."""
         rs = normalise_settings(settings)
         suite_rows = self.resolve_suites(suites)
         rows = self.resolve_contestants(contestants)
@@ -173,12 +209,44 @@ class Runner:
             if c["missing"]:
                 raise GaltonError("not_found", "model_gone", name=c["name"])
             self.ensure_served(c)
+        plans = {c["id"]: self.plan_cases(c, suite_rows, rs, continues) for c in rows}
+        if continues and not any(planned for planned, _notes in plans.values()):
+            raise GaltonError("invalid", "run_nothing_left", id=continues)
         run = self.store.create_run(label=label or ", ".join(s["name"] for s in suite_rows)[:80], state="queued", suites=[s["id"] for s in suite_rows],
-                                    contestants=[c["id"] for c in rows], settings=rs, source=source, caller=caller)
+                                    contestants=[c["id"] for c in rows], settings=rs, source=source, caller=caller, continues=continues)
         for c in rows:
-            planned, notes = self.plan_cases(c, suite_rows, rs)
+            planned, notes = plans[c["id"]]
             self.store.upsert_run_contestant(run["id"], c["id"], state="queued", total=len(planned), done=0, digest=c["digest"], warnings=notes)
         return self.store.run(run["id"])
+
+    @staticmethod
+    def ensure_resumable(run: dict[str, Any]) -> None:
+        """Only a run that failed or was cancelled, and was not discarded, can be continued."""
+        if run["discarded"]:
+            raise GaltonError("conflict", "run_discarded_not_resumable", id=run["id"])
+        if run["state"] not in RESUMABLE:
+            raise GaltonError("conflict", "run_not_resumable", id=run["id"], state=run["state"])
+
+    @staticmethod
+    def continued_label(label: str) -> str:
+        """The label of a run that continues ``label``: the same label plus the suffix (once, however many times a run is continued), within the limit."""
+        base = str(label or "")
+        found = recognise(base, prefix="label_")
+        while getattr(found, "key", "") == "label_continued":
+            base = str(found.params.get("label", ""))
+            found = recognise(base, prefix="label_")
+        room = LABEL_MAX - len(text("label_continued", label=""))
+        if len(base) > room:
+            base = base[:room - 1].rstrip() + "…"
+        return str(text("label_continued", label=base))
+
+    def resume(self, run_id: str, *, source: str = "ui", caller: str = "") -> dict[str, Any]:
+        """Queue a new run that finishes an interrupted one (failed, for example because Galton was restarted, or cancelled): the same suites, models
+        and settings, asking only what the earlier run (and the runs it continued) did not measure. The models are checked as for any run."""
+        run = self.store.run(run_id)
+        self.ensure_resumable(run)
+        return self.create(suites=run["suites"], contestants=run["contestants"], settings=run["settings"], label=self.continued_label(run["label"]), source=source, caller=caller,
+                           continues=run["id"])
 
     def ensure_served(self, c: dict[str, Any]) -> None:
         """A server contestant marked as not served (its address serves another model) cannot be measured. The mark is checked against the server
@@ -635,7 +703,10 @@ class Runner:
     def _run_contestant(self, run: dict[str, Any], contestant: dict[str, Any], suites: list[dict[str, Any]], rs: dict[str, Any], pool: ThreadPoolExecutor) -> str:
         run_id, cid = run["id"], contestant["id"]
         cancel = lambda: self.is_cancelled(run_id)  # noqa: E731
-        planned, notes = self.plan_cases(contestant, suites, rs)
+        planned, notes = self.plan_cases(contestant, suites, rs, run.get("continues", ""))
+        if run.get("continues") and not planned:           # everything of this model was measured before: no need to load it
+            self.store.upsert_run_contestant(run_id, cid, state="done", started_ts=self.clock(), finished_ts=self.clock(), total=0, done=0, digest=contestant["digest"], warnings=notes, error="")
+            return "done"
         lock = threading.Lock()
         progress = {"done": 0}
         self.store.upsert_run_contestant(run_id, cid, state="running", started_ts=self.clock(), total=len(planned), done=0, digest=contestant["digest"], warnings=notes, error="")
@@ -808,6 +879,9 @@ class Runner:
                 outcomes[cid] = self._run_contestant(run, contestant, suites, rs, pool)
             if not self.is_cancelled(run_id):
                 self.judge_pending(run_id)
+                for earlier in self.continued_chain(run["continues"]):       # answers the interruption left waiting for the judge
+                    if not earlier["discarded"]:
+                        self.judge_pending(earlier["id"], cancel_as=run_id)
         finally:
             pool.shutdown(wait=True)
             self.active_run, self.active_info = None, {}
@@ -841,8 +915,9 @@ class Runner:
         return out
 
     # ------------------------------------------------------------------ the judge phase
-    def judge_pending(self, run_id: Optional[str] = None) -> dict[str, Any]:
-        """Grade the answers that waited for the judge. Starts the judge if it is a GGUF. Anything still ungradable stays pending."""
+    def judge_pending(self, run_id: Optional[str] = None, *, cancel_as: str = "") -> dict[str, Any]:
+        """Grade the answers that waited for the judge. Starts the judge if it is a GGUF. Anything still ungradable stays pending.
+        ``cancel_as``: the run whose cancelling stops this grading (when the pending answers are those of an earlier run that this run continues)."""
         if run_id:
             pending = self.store.pending_judge(run_id)
         else:
@@ -856,7 +931,7 @@ class Runner:
         if judge["missing"] or not judge["enabled"]:
             return {"graded": 0, "pending": len(pending), "reason": text("judge_unavailable", name=judge["name"])}
         rs = normalise_settings({})
-        cancel = (lambda: self.is_cancelled(run_id)) if run_id else (lambda: False)
+        cancel = (lambda: self.is_cancelled(cancel_as or run_id)) if run_id else (lambda: False)
         graded = 0
         try:
             with self.session(judge, rs, cancel) as s:

@@ -399,6 +399,19 @@ Annotations: idempotentHint.
 |---|---|---|
 | `run` (string) | yes | Run id (r_…) of a discarded run. |
 
+## `run_resume`
+
+Continue an interrupted run, asking only what it did not measure. Continuar donde se quedó.
+
+For a run that failed (Galton was restarted) or was cancelled and not discarded. Queues a new run with the same suites, models and settings and `continues` set to the earlier one; cases already measured on the current version of each model are not asked again, answers still waiting for the judge are graded, and the earlier results keep counting.
+Sinónimos: reanudar, retomar, seguir la ejecución, se reinició Galton, terminar lo que falta
+
+Annotations: openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `run` (string) | yes | Run id (r_…) of a run that failed (for example because Galton was restarted) or was cancelled, and was not discarded. |
+
 ## `runs_list`
 
 Recent runs with state and progress. Historial de ejecuciones.

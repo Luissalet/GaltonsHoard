@@ -17,3 +17,5 @@ export const RUN_STATE = {
   cancelled: "chip",
 };
 export const ACTIVE_STATES = new Set(["queued", "waiting_gpu", "waiting_server", "running"]);
+// A run in one of these states stopped before it was done and can be continued (when it was not discarded).
+export const RESUMABLE_STATES = new Set(["failed", "cancelled"]);

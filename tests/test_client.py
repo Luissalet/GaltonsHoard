@@ -88,3 +88,9 @@ def test_the_app_loads_the_dashboard_at_once_and_when_the_tab_returns():
     effect = app.split("refreshDash();\n    api.health()")[0].rsplit("useEffect(", 1)[1]
     assert effect.strip() == "() => {", "refreshDash() is the first thing the effect does, whatever the visibility"
     assert 'document.addEventListener("visibilitychange", onVisible)' in app
+
+
+def test_the_run_page_continues_an_interrupted_run_and_links_to_the_earlier_one():
+    page = (SRC / "pages" / "Ejecutar.jsx").read_text(encoding="utf-8")
+    assert 'api.call("run_resume"' in page and 'RESUMABLE.has(run.state) && !run.discarded' in page and "run.continues" in page and "key={param}" in page
+    assert '"failed", "cancelled"' in (SRC / "meta.js").read_text(encoding="utf-8")

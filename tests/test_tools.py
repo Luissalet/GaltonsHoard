@@ -285,6 +285,25 @@ def test_discarding_a_run_does_not_touch_the_others_and_a_second_discard_updates
     assert svc.store.run(second["id"])["discarded"] is False
 
 
+def test_run_resume_queues_a_continuation_of_an_interrupted_run(svc, measured):
+    big = measured["big"]
+    run = svc.store.update_run(measured["run"]["id"], state="failed", error="Galton was stopped while this run was in progress.")
+    for row in svc.store.results(run_id=run["id"], contestant_id=big["id"], with_output=False)[3:]:
+        svc.db.execute("DELETE FROM results WHERE id = ?", (row["id"],))
+    out = call(svc, "run_resume", run=run["id"])
+    assert out["continues"] == run["id"] and out["run"]["continues"] == run["id"] and out["run"]["state"] == "done" and out["warnings"] == []
+    assert out["run"]["label"].endswith(" (continued)") and len(out["run"]["label"]) <= 80 and str(out["run"]["label"]).startswith(str(run["label"])[:50])
+    assert svc.store.run(out["run"]["id"])["source"] == "assistant"
+    again = svc.store.run(out["run"]["id"])
+    with pytest.raises(GaltonError) as raised:
+        call(svc, "run_resume", run=again["id"])
+    assert raised.value.key == "run_not_resumable" and raised.value.params["state"] == "done"
+    with pytest.raises(GaltonError):
+        call(svc, "run_resume", run="r_nope")
+    annotations = TOOLS_BY_NAME["run_resume"].annotations
+    assert annotations["destructiveHint"] is False and annotations["idempotentHint"] is False and annotations["readOnlyHint"] is False
+
+
 def test_a_run_that_is_still_going_cannot_be_discarded(svc):
     a = add_gguf(svc, "alfa-q4")
     run = svc.runner.create(suites=["razonamiento"], contestants=[a["id"]], source="test")

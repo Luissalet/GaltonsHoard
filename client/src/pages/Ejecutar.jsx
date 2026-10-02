@@ -4,7 +4,7 @@ import { useApp } from "../context.js";
 import { Busy, Chip, Empty, ErrorBox, Failure, Field, Icon, ICONS, Modal, Problem, Rel, Section, Spinner, Switch, useBusy, useLoad } from "../components/ui.jsx";
 import { CpuBadge, Progress, StateChip } from "../components/parts.jsx";
 import { usePoll } from "../components/hooks.js";
-import { ACTIVE_STATES, CATEGORIES, EFFORTS } from "../meta.js";
+import { ACTIVE_STATES, CATEGORIES, EFFORTS, RESUMABLE_STATES as RESUMABLE } from "../meta.js";
 import { duration, elapsed, gb, num, shortClock } from "../format.js";
 
 // ------------------------------------------------------------------ the form
@@ -145,7 +145,7 @@ function History() {
             <tbody>
               {runs.map((r) => (
                 <tr key={r.id} style={r.discarded ? { opacity: 0.65 } : undefined}>
-                  <td style={{ overflowWrap: "anywhere" }}><a href={`#/ejecutar/${r.id}`}>{r.label}</a></td>
+                  <td style={{ overflowWrap: "anywhere" }}><a href={`#/ejecutar/${r.id}`}>{t.msg(r.label)}</a></td>
                   <td><StateChip state={r.state} />{r.discarded && <Chip className="chip-danger" title={r.discard_reason}>{t("discarded_run")}</Chip>}{r.pending_judge > 0 && <Chip className="chip-amber">{t("judge_pending_n", { n: r.pending_judge })}</Chip>}</td>
                   <td style={{ minWidth: 120 }}><div className="help num">{r.progress.done}/{r.progress.total}</div><Progress done={r.progress.done} total={r.progress.total} /></td>
                   <td className="help">{r.contestants.map((c) => c.name).join(", ")}</td>
@@ -298,6 +298,12 @@ function RunDetail({ id }) {
     pull();
   });
   const judge = () => act("judge", async () => { await api.call("judge_run", {}); notify(t("judge_queued")); changed(); });
+  const resume = () => act("resume", async () => {
+    const r = await api.call("run_resume", { run: id });
+    notify(t("run_resumed"));
+    changed();
+    window.location.hash = `#/ejecutar/${r.run.id}`;
+  });
   const restore = () => act("restore", async () => { await api.call("run_restore", { run: id }); notify(t("run_restored")); changed(); pull(); });
 
   const shown = useMemo(() => results.filter((r) => (!filter.contestant || r.contestant === filter.contestant) && (!filter.failed || (!r.passed && !r.skipped))), [results, filter]);
@@ -309,15 +315,17 @@ function RunDetail({ id }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <a href="#/ejecutar" className="btn btn-sm"><Icon d={ICONS.back} size={14} />{t("nav_run")}</a>
-        <h1 className="mr-auto" style={{ overflowWrap: "anywhere" }}>{run.label}</h1>
+        <h1 className="mr-auto" style={{ overflowWrap: "anywhere" }}>{t.msg(run.label)}</h1>
         <StateChip state={run.state} />
         {run.discarded && <Chip className="chip-danger">{t("discarded_run")}</Chip>}
         {run.pending_judge > 0 && <Busy className="btn" busy={busy.judge} onClick={judge}>{t("judge_now", { n: run.pending_judge })}</Busy>}
         {active && <Busy className="btn btn-danger" busy={busy.cancel} onClick={cancel}><Icon d={ICONS.stop} size={14} />{t("cancel_run")}</Busy>}
+        {RESUMABLE.has(run.state) && !run.discarded && <Busy className="btn btn-primary" busy={busy.resume} onClick={resume}><Icon d={ICONS.run} size={14} />{t("resume_run")}</Busy>}
         {!active && !run.discarded && <button type="button" className="btn" onClick={() => setDiscarding(true)}>{t("discard_run")}</button>}
         {run.discarded && <Busy className="btn" busy={busy.restore} onClick={restore}>{t("restore_run")}</Busy>}
       </div>
       {discarding && <DiscardModal run={run} onClose={() => setDiscarding(false)} onDone={() => { notify(t("run_discarded")); changed(); pull(); }} />}
+      {run.continues && <div className="help">{t("continues_run")} <a href={`#/ejecutar/${run.continues}`}>{run.continues_label ? t.msg(run.continues_label) : run.continues}</a></div>}
       {run.discarded && <div className="banner banner-warn">{t("discarded_banner", { reason: run.discard_reason })}</div>}
       <ErrorBox error={error} />
       {run.error && <Failure m={run.error} className="banner banner-danger" />}
@@ -371,7 +379,7 @@ function RunDetail({ id }) {
 
 export default function Ejecutar({ param, query }) {
   const { t } = useApp();
-  if (param) return <RunDetail id={param} />;
+  if (param) return <RunDetail key={param} id={param} />;
   return (
     <div className="space-y-5">
       <h1>{t("nav_run")}</h1>

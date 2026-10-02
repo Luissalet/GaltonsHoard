@@ -19,7 +19,7 @@
                       ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
                       ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
                       └──► arena.py: blind pairs from stored answers, votes, ratings
- agent_tools.py: one catalogue (43 tools) ──► api/agent.py (Bearer token) · api/ui.py (local) · mcp_server.py (stdio bridge)
+ agent_tools.py: one catalogue (44 tools) ──► api/agent.py (Bearer token) · api/ui.py (local) · mcp_server.py (stdio bridge)
  scheduler.py: lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
 ```
 
@@ -109,4 +109,5 @@ Everything lives in `data/` (or `GALTON_DATA_DIR`): `galton.db`, `images/`, `cac
 
 - **Identity.** A `server` contestant stands for (address, model). `models_refresh` compares it with what the address serves (`discovery._check_served`): a contestant whose address now serves another model gets `meta.not_served` (kept, with history, excluded from run forms and from `measure_new`, cleared when the server serves it again) and the new model gets its own contestant. A run uses `identity.IdentityGuard`; see `tests/test_server_identity.py` (a fake server that swaps models mid-run).
 - **Discarded runs.** `run_discard` (needs `confirm=true` and a reason) sets a flag on a finished run; `run_restore` clears it. Every statistic reads results through the SQL fragment `LIVE` (`store.scoring_rows`), so the leaderboard, compare, recommend, routes, arena and regression checks never see a discarded run. Discarding retracts the regression and improvement notices of that run; restoring re-checks regressions.
+- **Continuing a run.** `run_resume` (`Runner.resume`) queues a new run for a run that is `failed` or `cancelled` and not discarded: same suites, models and settings, `runs.continues` set to the earlier run, label plus a suffix (`label_continued`). `Runner.plan_cases` leaves out every (suite, case, repeat) that the runs `continues` leads back to (followed transitively; a loop ends the walk; discarded runs do not count) already hold for that model on its current digest, without an error and not skipped or unavailable (`store.measured_keys`); the contestant gets the note `note_resumed`. A model with nothing left is not loaded, and a continuation with nothing left for any model is refused (`run_nothing_left`). `execute` also grades the answers of the continued runs that still wait for the judge. The earlier results keep counting in every statistic (the new run only adds).
 - **Cancel.** The note of `run_cancel` depends on the contestants not yet finished: Galton's own llama-server (a GGUF file, ports 8091-8099) is stopped; a shared server is not touched and keeps running (`run_stopping_own`, `run_stopping_shared`, `run_stopping_both`). Nothing in cancel unloads, stops or kills a shared server (`tests/test_cancel.py`).
