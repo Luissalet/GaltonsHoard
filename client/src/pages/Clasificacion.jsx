@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, Empty, ErrorBox, Field, Icon, ICONS, Rel, Section, Spinner, Switch, Tabs, useBusy, useLoad } from "../components/ui.jsx";
-import { CiBar, MemoryChip, Score, VerdictChip } from "../components/parts.jsx";
+import { CiBar, CpuBadge, MemoryChip, Score, VerdictChip } from "../components/parts.jsx";
 import { CATEGORIES, TASKS } from "../meta.js";
 import { duration, interval, num, pct } from "../format.js";
 
@@ -64,7 +64,7 @@ function Leaderboard({ suites }) {
                   <td><Score value={r.score} ci={r.ci} /><CiBar value={r.score} ci={r.ci} /></td>
                   <td className="r num">{pct(r.pass_rate, 0, lang)}<div className="help">{interval(r.pass_ci, lang)}</div></td>
                   <td className="r num">{r.n}{r.truncated > 0 && <div><Chip className={r.warnings?.length ? "chip-danger" : "chip-amber"} title={t("truncated_hint")}>{t("truncated_n", { n: r.truncated })}</Chip></div>}</td>
-                  <td className="r num">{r.decode_tps != null ? `${num(r.decode_tps, 0, lang)} tok/s` : "—"}{r.decode_tps_p90 != null && <div className="help">p90 {num(r.decode_tps_p90, 0, lang)}</div>}</td>
+                  <td className="r num">{r.decode_tps != null ? `${num(r.decode_tps, 0, lang)} tok/s` : "—"}{r.speed_cpu && r.decode_tps != null && <> <CpuBadge /></>}{r.decode_tps_p90 != null && <div className="help">p90 {num(r.decode_tps_p90, 0, lang)}</div>}{r.decode_tps_cpu != null && <div className="help">{t("cpu_speed_also", { tps: num(r.decode_tps_cpu, 0, lang) })}</div>}</td>
                   <td className="r num">{duration(r.ttft_ms)}</td>
                   <td><MemoryChip model={r} /></td>
                   <td><span className="inline-flex flex-wrap gap-1">{Object.entries(r.by_category || {}).map(([k, v]) => <Chip key={k} className={v.truncated > 0 ? "chip-amber" : ""} title={`n=${v.n}${v.truncated > 0 ? ` · ${t("truncated_n", { n: v.truncated })}` : ""}`}>{t(`cat_${k}`)} {num(v.score, 2, lang)}</Chip>)}</span></td>
@@ -122,7 +122,7 @@ function Compare({ suites }) {
                 <b style={{ overflowWrap: "anywhere" }}>{out[side].name}</b>
                 <div><Score value={out[side].summary?.score} ci={out[side].summary?.ci} n={out[side].summary?.n} /></div>
                 <CiBar value={out[side].summary?.score} ci={out[side].summary?.ci} />
-                <div className="help num">{t("pass_rate")} {pct(out[side].summary?.pass_rate, 0, lang)} · {out[side].speed?.decode_tps_median != null ? `${num(out[side].speed.decode_tps_median, 0, lang)} tok/s` : "—"} · TTFT {duration(out[side].speed?.ttft_ms_median)}</div>
+                <div className="help num">{t("pass_rate")} {pct(out[side].summary?.pass_rate, 0, lang)} · {out[side].speed?.decode_tps_median != null ? `${num(out[side].speed.decode_tps_median, 0, lang)} tok/s` : "—"}{out[side].speed?.cpu && out[side].speed?.decode_tps_median != null ? " (CPU)" : ""} · TTFT {duration(out[side].speed?.ttft_ms_median)}</div>
               </div>
             ))}
           </div>

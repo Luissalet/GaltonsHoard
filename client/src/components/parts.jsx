@@ -36,6 +36,12 @@ export function StateChip({ state }) {
   return <Chip className={RUN_STATE[state] || ""}>{t(`state_${state}`)}</Chip>;
 }
 
+// Marks a speed that was measured on the processor: it is not comparable with the speeds measured on a GPU.
+export function CpuBadge() {
+  const { t } = useApp();
+  return <Chip className="chip-amber" title={t("cpu_badge_hint")}>CPU</Chip>;
+}
+
 export function Score({ value, ci, n }) {
   const { lang } = useApp();
   if (value === null || value === undefined) return <span className="help">—</span>;

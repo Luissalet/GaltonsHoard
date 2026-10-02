@@ -320,7 +320,7 @@ class Services:
     def result_card(self, r: dict[str, Any], titles: dict[str, str], names: dict[str, str], *, output: bool = True, limit: int = OUTPUT_PREVIEW) -> dict[str, Any]:
         card = {"id": r["id"], "run": r["run_id"], "contestant": r["contestant_id"], "contestant_name": names.get(r["contestant_id"], r["contestant_id"]), "suite": r["suite_id"],
                 "case": r["case_id"], "title": titles.get(r["case_id"], r["case_id"]), "category": r["category"], "repeat": r["repeat"], "score": r["score"], "passed": r["passed"],
-                "skipped": r["skipped"], "unavailable": r["unavailable"], "truncated": r["truncated"], "judge_pending": r["judge_pending"], "self_judged": r["self_judged"], "error": r["error"],
+                "skipped": r["skipped"], "unavailable": r["unavailable"], "truncated": r["truncated"], "cpu": r["cpu"], "judge_pending": r["judge_pending"], "self_judged": r["self_judged"], "error": r["error"],
                 "latency_ms": r["latency_ms"], "ttft_ms": r["ttft_ms"], "decode_tps": r["decode_tps"], "prompt_tokens": r["prompt_tokens"],
                 "completion_tokens": r["completion_tokens"], "detail": r["detail"]}
         if output:
@@ -344,7 +344,7 @@ class Services:
             counts = self.store.count_results(run["id"], cid)
             contestants.append({"id": cid, "name": c["name"] if c else cid, "kind": c["kind"] if c else "", "state": rc.get("state", "queued"), "done": rc.get("done", 0),
                                 "total": rc.get("total", 0), "error": rc.get("error", ""), "hint": hint_of(rc.get("error")), "runs_on": rc.get("runs_on", ""), "load_ms": rc.get("load_ms"), "vram_mb": rc.get("vram_mb"),
-                                "vram_method": rc.get("vram_method", ""), "gpus": rc.get("gpus", []), "context": rc.get("context"), "warnings": rc.get("warnings", []),
+                                "vram_method": rc.get("vram_method", ""), "gpus": rc.get("gpus", []), "device": rc.get("device", ""), "context": rc.get("context"), "warnings": rc.get("warnings", []),
                                 "spill": rc.get("spill", ""), "passed": counts.get("passed", 0), "skipped": counts.get("skipped", 0), "errors": counts.get("errors", 0),
                                 "truncated": counts.get("truncated", 0), **self._waiting(rc)})
         total = sum(c["total"] for c in contestants)
@@ -509,7 +509,13 @@ class Services:
                     self.launcher.binary()
                 info = placement.gguf_info(self.store, c, self.meta_reader)
                 context = placement.choose_context(int(rs["context"] or self.settings.get("runner.context")), info)
-                self.gpus.check_possible(placement.estimate_mb(self.store, c, context, self.meta_reader))
+                need = placement.estimate_mb(self.store, c, context, self.meta_reader)
+                if rs["device"] != "cpu":
+                    try:
+                        self.gpus.check_possible(need)
+                    except GaltonError as exc:
+                        if not (exc.code == "no_gpu" and placement.cpu_eligible(self.settings, c, rs["device"])):
+                            raise
             except GaltonError as exc:
                 problems.append({"contestant": c["id"], "name": c["name"], "problem": exc.coded(), "hint": exc.hint, "code": exc.code, "key": exc.key, "params": exc.params})
         return problems
@@ -522,7 +528,8 @@ class Services:
         out = []
         for c in rows:
             planned, notes = self.runner.plan_cases(c, suite_rows, rs)
-            where = placement.describe(self.store, c, int(rs["context"] or self.settings.get("runner.context")), self.gpus, self.meta_reader)
+            where = placement.describe(self.store, c, int(rs["context"] or self.settings.get("runner.context")), self.gpus, self.meta_reader, settings=self.settings,
+                                       device=rs["device"])
             out.append({"id": c["id"], "name": c["name"], "kind": c["kind"], "cases": len(planned), "notes": notes, "enabled": c["enabled"], "missing": c["missing"], **where})
         return {"suites": [{"id": s["id"], "name": s["name"], "cases": self.store.count_cases(s["id"])} for s in suite_rows], "contestants": out,
                 "problems": self.preflight(rows, rs), "settings": rs, "total_cases": sum(c["cases"] for c in out)}

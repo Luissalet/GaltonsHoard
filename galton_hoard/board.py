@@ -105,7 +105,7 @@ class Board:
             counted = rows if (stale and include_stale) else fresh
             summary = stats.summarize(counted)
             mem, method = memory_gb(self.store, c)
-            speed = stats.speed_summary(self.store.speed_rows(c["id"], since_ts=since, digest="" if (stale and include_stale) else c["digest"]))
+            speed = stats.speed_by_device(self.store.speed_rows(c["id"], since_ts=since, digest="" if (stale and include_stale) else c["digest"]))
             by_cat: dict[str, Any] = {}
             cut = stats.truncation(counted)
             warnings = []
@@ -121,7 +121,7 @@ class Board:
                 "vision": c["vision"], "enabled": c["enabled"], "missing": c["missing"], "remote": c["remote"], "adhoc": c["adhoc"],
                 "score": summary["score"], "ci": summary["ci"], "pass_rate": summary["pass_rate"], "pass_ci": summary["pass_ci"], "n": summary["n"], "n_results": summary["n_results"],
                 "lower": summary["ci"][0] if summary["ci"] else None, "by_category": by_cat,
-                "decode_tps": speed["decode_tps_median"], "decode_tps_p90": speed["decode_tps_p90"], "prompt_tps": speed["prompt_tps_median"], "ttft_ms": speed["ttft_ms_median"],
+                "decode_tps": speed["decode_tps_median"], "speed_cpu": speed["cpu"], "decode_tps_cpu": speed["cpu_decode_tps_median"], "decode_tps_p90": speed["decode_tps_p90"], "prompt_tps": speed["prompt_tps_median"], "ttft_ms": speed["ttft_ms_median"],
                 "memory_gb": mem, "memory_method": method, "fits_16gb": (mem <= FITS_16_GB) if mem is not None else None,
                 "stale": stale, "stale_n": len(rows) - len(fresh), "last_ts": (last.get(c["id"]) or {}).get("last_ts"),
                 "truncated": sum(1 for r in counted if r.get("truncated")), "warnings": warnings,
@@ -162,7 +162,7 @@ class Board:
         }[result["verdict"]]
         if result["diff"] is not None:
             sentence += f" (score difference {result['diff']:+.3f}, 95 % interval {result['diff_ci'][0]:+.3f} to {result['diff_ci'][1]:+.3f}, p = {result['p_value']}, {result['n']} shared cases)"
-        speeds = {c["id"]: stats.speed_summary(self.store.speed_rows(c["id"], digest="" if include_stale else c["digest"])) for c in (ca, cb)}
+        speeds = {c["id"]: stats.speed_by_device(self.store.speed_rows(c["id"], digest="" if include_stale else c["digest"])) for c in (ca, cb)}
         return {"scope": label, "a": {"id": ca["id"], "name": ca["name"], "summary": stats.summarize(rows[ca["id"]]), "speed": speeds[ca["id"]]},
                 "b": {"id": cb["id"], "name": cb["name"], "summary": stats.summarize(rows[cb["id"]]), "speed": speeds[cb["id"]]}, "sentence": sentence + ".", **result}
 
@@ -187,7 +187,7 @@ class Board:
         if measured:
             top = measured[0]
             out.update(recommendation={"id": top["contestant"], "name": top["name"], "score": top["score"], "ci": top["ci"], "n": top["n"], "tok_s": top["decode_tps"],
-                                       "vram_gb": top["memory_gb"], "provisional": True},
+                                       **({"cpu": True} if top["speed_cpu"] else {}), "vram_gb": top["memory_gb"], "provisional": True},
                        runner_up=None,
                        why=f"Provisional: {top['name']} is the best measured model for {chosen} ({top['score']:.2f} on {top['n']} cases) but the policy needs more evidence "
                            f"(see excluded) before it would be published.")

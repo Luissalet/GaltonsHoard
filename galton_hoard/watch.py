@@ -143,7 +143,7 @@ class Watch:
             reasons[c["name"]] = why
             if not ok:
                 continue
-            run = self.runner.create(suites=[SMOKE_SUITE], contestants=[c["id"]], settings={"wait_s": 0}, label=text("label_watch", name=c["name"]), source="watch", caller="watch")
+            run = self.runner.create(suites=[SMOKE_SUITE], contestants=[c["id"]], settings={"wait_s": 0, "device": "gpu"}, label=text("label_watch", name=c["name"]), source="watch", caller="watch")
             self.submit_run(run["id"])
             decision["queued"] = {"run": run["id"], "contestant": c["name"], "why": why}
             return decision

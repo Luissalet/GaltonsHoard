@@ -2,7 +2,7 @@ import React from "react";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, Empty, Icon, ICONS, Rel, Section, useBusy } from "../components/ui.jsx";
-import { CiBar, GpuStrip, Progress, Score, StateChip } from "../components/parts.jsx";
+import { CiBar, CpuBadge, GpuStrip, Progress, Score, StateChip } from "../components/parts.jsx";
 import { num } from "../format.js";
 
 function RunningCard({ run }) {
@@ -126,7 +126,7 @@ export default function Panel() {
                       <>
                         <td style={{ minWidth: 150 }}>{r.winner.names[0]}</td>
                         <td><div style={{ minWidth: 150 }}><Score value={r.winner.score} ci={r.winner.ci} n={r.winner.n} /><CiBar value={r.winner.score} ci={r.winner.ci} /></div></td>
-                        <td className="r num">{r.winner.tok_s != null ? `${num(r.winner.tok_s, 0, lang)} tok/s` : "—"}</td>
+                        <td className="r num">{r.winner.tok_s != null ? `${num(r.winner.tok_s, 0, lang)} tok/s` : "—"}{r.winner.cpu && r.winner.tok_s != null && <> <CpuBadge /></>}</td>
                         <td className="r num">{r.winner.vram_gb != null ? `${num(r.winner.vram_gb, 1, lang)} GB` : "—"}</td>
                         <td><Rel ts={r.measured_ts} /></td>
                         <td>

@@ -36,6 +36,8 @@ class LaunchSpec:
     context: int = 8192
     mmproj_path: Optional[str] = None
     grant: Optional[GpuGrant] = None
+    cpu: bool = False                           # run on the CPU only: no layers on a GPU, no GPU visible to the child
+    threads: Optional[int] = None               # CPU threads (``-t``) when ``cpu``
     extra_args: list[str] = field(default_factory=list)
 
 
@@ -121,11 +123,13 @@ class Launcher:
 
     # ------------------------------------------------------------------ start / stop
     def command(self, spec: LaunchSpec, port: int, alias: str) -> list[str]:
-        cmd = [self.binary(), "-m", spec.model_path, "-c", str(spec.context), "-ngl", "99", "-fa", "on", "--jinja", "-np", "1", "--host", "127.0.0.1",
+        cmd = [self.binary(), "-m", spec.model_path, "-c", str(spec.context), "-ngl", "0" if spec.cpu else "99", "-fa", "on", "--jinja", "-np", "1", "--host", "127.0.0.1",
                "--port", str(port), "--metrics", "--alias", alias]
         if spec.mmproj_path:
             cmd += ["--mmproj", spec.mmproj_path]
-        split = spec.grant.tensor_split if spec.grant else None
+        if spec.cpu and spec.threads:
+            cmd += ["-t", str(int(spec.threads))]
+        split = spec.grant.tensor_split if spec.grant and not spec.cpu else None
         if split:
             cmd += ["--tensor-split", ",".join(f"{x:g}" for x in split)]
         cmd += shlex.split(str(self.settings.get("llama.extra_args") or ""), posix=os.name != "nt") + list(spec.extra_args)
@@ -142,7 +146,7 @@ class Launcher:
         # CUDA numbers GPUs fastest-first by default, nvidia-smi (and the hub, and the allowed list) by PCI bus: without this the
         # child could land on one of the owner's GPUs. No grant means no GPU at all, never "every GPU".
         env["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        env["CUDA_VISIBLE_DEVICES"] = spec.grant.cuda_visible_devices if spec.grant else ""
+        env["CUDA_VISIBLE_DEVICES"] = spec.grant.cuda_visible_devices if spec.grant and not spec.cpu else ""
         started = self._clock()
         with log_path.open("ab") as logfile:
             logfile.write(f"\n=== {time.strftime('%Y-%m-%d %H:%M:%S')} {' '.join(shlex.quote(c) for c in cmd)}\n".encode("utf-8", "replace"))

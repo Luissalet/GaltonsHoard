@@ -274,7 +274,7 @@ class RunSpec(BaseModel):
     suites: list[str] = Field(..., min_length=1, max_length=40, description="Suite ids, slugs or names; ['all'] means every suite but the quick one.")
     contestants: list[Union[str, dict[str, Any]]] = Field(..., min_length=1, max_length=40, description="Model ids or names, or specs: {kind: 'gguf', path: 'D:\\\\m\\\\x.gguf', mmproj?}, "
                                                                                                           "{kind: 'ollama', model: 'qwen3:8b'}, {kind: 'server', url: 'http://127.0.0.1:8081', model: '…'}.")
-    settings: dict[str, Any] = Field(default_factory=dict, description=f"Run settings: {', '.join(RUN_DEFAULTS)}. effort is off|low|medium|high|max. A model that reasons gets runner.reasoning_tokens more tokens than the answer budget, unless effort is off.")
+    settings: dict[str, Any] = Field(default_factory=dict, description=f"Run settings: {', '.join(RUN_DEFAULTS)}. effort is off|low|medium|high|max. device is auto|gpu|cpu: auto runs a small GGUF (file up to runner.cpu_max_gb) on the CPU when no allowed GPU is free, gpu never does, cpu always does. A model that reasons gets runner.reasoning_tokens more tokens than the answer budget, unless effort is off.")
 
 
 class RunStartArgs(RunSpec):
@@ -483,7 +483,7 @@ def run_model_get(svc: Services, a: ModelRef) -> dict[str, Any]:
     card = svc.contestant_card(c, svc.store.last_measured())
     board = svc.board.leaderboard(include_stale=True, include_disabled=True)
     row = next((r for r in board["rows"] if r["contestant"] == c["id"]), None)
-    where = placement.describe(svc.store, c, int(svc.settings.get("runner.context")), svc.gpus, svc.meta_reader)
+    where = placement.describe(svc.store, c, int(svc.settings.get("runner.context")), svc.gpus, svc.meta_reader, settings=svc.settings)
     return cap_result({"model": card, "where": where, "same_weights": svc.same_weights(c), "scores": row, "measurements": svc.store.measurements(c["id"], limit=10),
                        "meta": {k: v for k, v in c["meta"].items() if k not in ("ollama",)}})
 

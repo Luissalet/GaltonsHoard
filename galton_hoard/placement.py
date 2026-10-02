@@ -48,8 +48,34 @@ def estimate_mb(store: Any, contestant: dict[str, Any], context: int, reader: Ca
     return gguf_meta.estimate_vram_mb(size, {**info, "params_b": info.get("params_b") or contestant.get("params_b")}, context, mmproj)
 
 
-def describe(store: Any, contestant: dict[str, Any], requested_context: int, gpus: Any, reader: Callable[[Any], dict[str, Any]] = gguf_meta.read_meta) -> dict[str, Any]:
-    """What the UI shows next to a contestant when choosing it: where it runs and how much memory it takes."""
+def file_gb(contestant: dict[str, Any]) -> float:
+    """Size of the model file in GiB (0 when unknown)."""
+    size = int(contestant.get("size_bytes") or 0)
+    if not size and contestant.get("path"):
+        try:
+            size = Path(contestant["path"]).stat().st_size
+        except OSError:
+            size = 0
+    return size / 1024 ** 3
+
+
+def cpu_eligible(settings: Any, contestant: dict[str, Any], device: str = "auto") -> bool:
+    """May this ``gguf`` contestant run on the CPU? ``device`` ``cpu``: always (the run asked for it); ``gpu``: never; ``auto``: when the setting
+    ``runner.cpu_fallback`` is on and the file is at most ``runner.cpu_max_gb``."""
+    if contestant.get("kind") != "gguf":
+        return False
+    if device == "cpu":
+        return True
+    if device == "gpu" or settings is None:
+        return False
+    size = file_gb(contestant)
+    return bool(settings.get("runner.cpu_fallback")) and 0 < size <= float(settings.get("runner.cpu_max_gb"))
+
+
+def describe(store: Any, contestant: dict[str, Any], requested_context: int, gpus: Any, reader: Callable[[Any], dict[str, Any]] = gguf_meta.read_meta, *,
+             settings: Any = None, device: str = "auto") -> dict[str, Any]:
+    """What the UI shows next to a contestant when choosing it: where it runs and how much memory it takes. ``device`` is the run setting
+    (``auto``, ``gpu`` or ``cpu``): with ``auto`` a small file that no allowed GPU can take right now is shown on the CPU."""
     if contestant["kind"] == "server":
         resident = contestant.get("meta", {}).get("resident")
         where = text("where_server_resident", url=contestant["url"]) if resident else text("where_server", url=contestant["url"])
@@ -61,13 +87,21 @@ def describe(store: Any, contestant: dict[str, Any], requested_context: int, gpu
         need = estimate_mb(store, contestant, context, reader)
     except GaltonError as exc:
         return {**out, "vram_mb": None, "where": exc.coded(), "fits_one_16gb": None, "warnings": [exc.coded()]}
-    out.update(vram_mb=need, fits_one_16gb=need <= FITS_16GB_MB)
+    cpu = {"vram_mb": None, "ram_mb": need, "fits_one_16gb": None, "gpus": [], "device": "cpu"}
+    if device == "cpu":
+        return {**out, **cpu, "where": text("where_cpu_forced")}
+    out.update(vram_mb=need, fits_one_16gb=need <= FITS_16GB_MB, device="gpu")
+    cpu_ok = cpu_eligible(settings, contestant, device)
     try:
         gpus.check_possible(need)
         plan = gpus.plan(need)
+        if plan is None and cpu_ok:
+            return {**out, **cpu, "where": text("where_cpu")}
         out["where"] = text("where_gpus", gpus=" + ".join(str(g) for g in plan)) if plan else text("where_wait")
         out["gpus"] = list(plan) if plan else []
     except GaltonError as exc:
+        if cpu_ok and exc.code == "no_gpu":
+            return {**out, **cpu, "where": text("where_cpu")}
         out["where"] = exc.coded()
         out["warnings"].append(exc.coded())
     return out

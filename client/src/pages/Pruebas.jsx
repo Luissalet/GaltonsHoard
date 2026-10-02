@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, Drawer, Empty, ErrorBox, Field, Icon, ICONS, Modal, Section, Spinner, useBusy, useLoad } from "../components/ui.jsx";
+import { CpuBadge } from "../components/parts.jsx";
 import { CATEGORIES } from "../meta.js";
 import { duration, num, splitList } from "../format.js";
 
@@ -31,7 +32,7 @@ function TryPanel({ caseId, draft }) {
             {out.verdict ? <Chip className={out.verdict.passed ? "chip-ok" : "chip-danger"}>{out.verdict.passed ? t("passed") : t("not_passed")} · {num(out.verdict.score, 2, lang)}</Chip> : <Chip>{t("unscored")}</Chip>}
             {out.judge_pending && <Chip className="chip-amber">{t("judge_pending")}</Chip>}
             <Chip>{out.checker}</Chip>
-            <span className="help num">{duration(out.latency_ms)} · {out.decode_tps ? `${num(out.decode_tps, 1, lang)} tok/s` : "—"}</span>
+            <span className="help num">{duration(out.latency_ms)} · {out.decode_tps ? `${num(out.decode_tps, 1, lang)} tok/s` : "—"}</span>{out.cpu && out.decode_tps ? <CpuBadge /> : null}
           </div>
           {out.notes?.map((n, i) => <div key={i} className="banner banner-warn">{t.msg(n)}</div>)}
           <div className="pre">{out.output || t("empty_output")}</div>

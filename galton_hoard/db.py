@@ -226,6 +226,11 @@ MIGRATIONS: list[str] = [
     ALTER TABLE runs ADD COLUMN discard_reason TEXT NOT NULL DEFAULT '';
     ALTER TABLE runs ADD COLUMN discarded_ts REAL;
     """,
+    # 5: a model that ran on the CPU: the contestant's run card says where, and each result is flagged so its speed is never mixed with GPU speeds
+    """
+    ALTER TABLE run_contestants ADD COLUMN device TEXT NOT NULL DEFAULT '';
+    ALTER TABLE results ADD COLUMN cpu INTEGER NOT NULL DEFAULT 0;
+    """,
 ]
 
 

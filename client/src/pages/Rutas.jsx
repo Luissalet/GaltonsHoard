@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, Empty, ErrorBox, Field, Icon, ICONS, Rel, Section, Spinner, useBusy, useLoad } from "../components/ui.jsx";
-import { CiBar, Score } from "../components/parts.jsx";
+import { CiBar, CpuBadge, Score } from "../components/parts.jsx";
 import { num } from "../format.js";
 
 function DiffSummary({ diff }) {
@@ -78,7 +78,7 @@ export default function Rutas() {
                             <React.Fragment key={x.names[0]}>
                               <div style={{ overflowWrap: "anywhere" }}>{i === 0 ? <Chip className="chip-accent">1</Chip> : <Chip>{i + 1}</Chip>} {i === 0 ? <b>{x.names[0]}</b> : x.names[0]}</div>
                               <div><Score value={x.score} ci={x.ci} n={x.n} /><CiBar value={x.score} ci={x.ci} /></div>
-                              <div className="num help">{x.tok_s != null ? `${num(x.tok_s, 0, lang)} tok/s` : "—"}</div>
+                              <div className="num help">{x.tok_s != null ? `${num(x.tok_s, 0, lang)} tok/s` : "—"}{x.cpu && x.tok_s != null && <> <CpuBadge /></>}</div>
                               <div className="num help">{x.vram_gb != null ? `${num(x.vram_gb, 1, lang)} GB` : "—"}</div>
                             </React.Fragment>
                           ))}

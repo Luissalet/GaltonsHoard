@@ -104,7 +104,7 @@ class Routes:
             if summary["n"] < int(policy["min_cases"]):
                 out("too_few")
                 continue
-            speed = stats.speed_summary(self.store.speed_rows(c["id"], since_ts=since, digest=c["digest"]))
+            speed = stats.speed_by_device(self.store.speed_rows(c["id"], since_ts=since, digest=c["digest"]))
             tps = speed["decode_tps_median"]
             if tps is not None and tps < float(policy["min_tok_s"]):
                 out("too_slow")
@@ -117,19 +117,22 @@ class Routes:
             if cut["warn"]:
                 warnings.append({"contestant": c["id"], "name": c["name"], "truncated": cut["truncated"], "results": cut["results"],
                                  "why": text("board_truncated", name=c["name"], n=cut["truncated"], total=cut["results"], category=category, pct=round(100 * cut["share"]))})
-            candidates.append({"contestant": c, "summary": summary, "tok_s": tps, "vram_gb": vram, "rows": fresh, "truncated": cut["truncated"]})
-        fastest = max((x["tok_s"] or 0 for x in candidates), default=0) or 1.0
+            candidates.append({"contestant": c, "summary": summary, "tok_s": tps, "cpu": speed["cpu"], "vram_gb": vram, "rows": fresh, "truncated": cut["truncated"]})
+        # a speed measured on the CPU is not comparable with GPU speeds: it never counts in the speed term nor as the tie-break
+        for x in candidates:
+            x["speed"] = 0.0 if x["cpu"] else (x["tok_s"] or 0)
+        fastest = max((x["speed"] for x in candidates), default=0) or 1.0
         wq, ws = float(policy["weight_quality"]), float(policy["weight_speed"])
         for x in candidates:
-            x["rank"] = wq * x["summary"]["ci"][0] + ws * ((x["tok_s"] or 0) / fastest)
-        candidates.sort(key=lambda x: (-x["rank"], -(x["tok_s"] or 0), x["contestant"]["name"]))
+            x["rank"] = wq * x["summary"]["ci"][0] + ws * (x["speed"] / fastest)
+        candidates.sort(key=lambda x: (-x["rank"], -x["speed"], x["contestant"]["name"]))
         return {"category": category, "ranked": candidates, "excluded": excluded, "warnings": warnings}
 
     @staticmethod
     def _item(x: dict[str, Any]) -> dict[str, Any]:
         s = x["summary"]
         return {"names": names_for(x["contestant"]), "score": round(s["score"], 2), "ci": [round(s["ci"][0], 2), round(s["ci"][1], 2)], "n": s["n"],
-                "tok_s": round(x["tok_s"], 1) if x["tok_s"] is not None else None, "vram_gb": x["vram_gb"]}
+                "tok_s": round(x["tok_s"], 1) if x["tok_s"] is not None else None, **({"cpu": True} if x.get("cpu") else {}), "vram_gb": x["vram_gb"]}
 
     def explain(self, category: str, ranked: list[dict[str, Any]]) -> tuple[str, dict[str, Any]]:
         """The sentence that goes in the table, and its parts for the UI."""
@@ -138,7 +141,7 @@ class Routes:
         name = top["contestant"]["name"]
         text = f"{name} wins {category}: {s['score']:.2f} [{s['ci'][0]:.2f}-{s['ci'][1]:.2f}] on {s['n']} cases"
         if top["tok_s"] is not None:
-            text += f", {top['tok_s']:.0f} tok/s"
+            text += f", {top['tok_s']:.0f} tok/s" + (" (CPU)" if top.get("cpu") else "")
         detail: dict[str, Any] = {"winner": name, "runner_up": None, "comparison": None}
         if len(ranked) > 1:
             second = ranked[1]

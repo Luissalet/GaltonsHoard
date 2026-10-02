@@ -172,14 +172,16 @@ export default function Ajustes() {
             {field("runner.idle_grace_s", t("runner_idle_grace"), t("runner_idle_grace_hint"))}
             {field("runner.wait_idle_max_s", t("runner_wait_idle_max"), t("runner_wait_idle_max_hint"))}
             {field("runner.gpu_wait_s", t("runner_gpu_wait"))}
+            {field("runner.cpu_max_gb", t("runner_cpu_max_gb"))}
             {field("runner.context", t("runner_context"), t("runner_context_hint"))}
             {field("runner.reasoning_tokens", t("runner_reasoning"), t("runner_reasoning_hint"))}
             {field("runner.check_threads", t("runner_threads"))}
           </div>
+          {field("runner.cpu_fallback", t("runner_cpu_fallback"), t("runner_cpu_fallback_hint"))}
           {field("runner.allow_ollama_load", t("runner_ollama_load"), t("runner_ollama_load_hint"))}
           {field("checks.allow_code_execution", t("code_exec"), t("code_exec_hint"))}
           {field("checks.code_timeout_s", t("code_timeout"))}
-          {saveBar(["runner.timeout_s", "runner.idle_grace_s", "runner.wait_idle_max_s", "runner.gpu_wait_s", "runner.context", "runner.reasoning_tokens", "runner.check_threads", "runner.allow_ollama_load", "checks.allow_code_execution", "checks.code_timeout_s"])}
+          {saveBar(["runner.timeout_s", "runner.idle_grace_s", "runner.wait_idle_max_s", "runner.gpu_wait_s", "runner.cpu_max_gb", "runner.cpu_fallback", "runner.context", "runner.reasoning_tokens", "runner.check_threads", "runner.allow_ollama_load", "checks.allow_code_execution", "checks.code_timeout_s"])}
         </div>
       </Section>
 

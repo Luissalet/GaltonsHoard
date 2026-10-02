@@ -82,14 +82,16 @@ def test_lists_become_one_text_and_extra_details_travel_with_the_error():
 
 def test_every_stored_sentence_is_recognised_with_its_key_and_parameters():
     for key, template in TEXTS.items():
-        if key in messages.GENERIC:
-            continue
+        if key in messages.GENERIC or messages._letters(key) < messages.MIN_LETTERS:
+            continue                                                       # wordless templates are never used to recognise
         params = sample(fields_of(template))
         found = messages.recognise(str(messages.text(key, **params)))
         assert isinstance(found, CodedText), key
         assert TEXTS[found.key] == template, (key, found.key)             # two keys with the same words are interchangeable
         assert {k: str(v) for k, v in found.params.items()} == params, key
     for key, (template, _hint) in ERRORS.items():
+        if messages._letters(key) < messages.MIN_LETTERS:
+            continue
         found = messages.recognise(GaltonError("invalid", key, **sample(fields_of(template))).message)
         assert isinstance(found, CodedText) and ERRORS[found.key][0] == template, key
 
@@ -340,3 +342,12 @@ def test_offline_discovery_never_probes_chat(svc):
     d = Discovery(svc.store, svc.settings, client_factory=mock_client_factory(stub_server(calls=calls)), clock=svc.clock, offline=True)
     d.refresh()
     assert calls == []
+
+
+def test_free_text_labels_are_not_taken_for_catalogue_sentences():
+    from galton_hoard import messages
+    # another app labels its runs "<app>: <artifact>"; it must stay plain text, not become a refresh error
+    assert messages.recognise("pygmalion: familia-qa-08b-Q4_K_M", prefix="label_") == "pygmalion: familia-qa-08b-Q4_K_M"
+    assert not hasattr(messages.recognise("pygmalion: familia-qa-08b-Q4_K_M"), "key")
+    coded = messages.recognise(messages.TEXTS["label_watch"].format(name="qwen"), prefix="label_")
+    assert getattr(coded, "key", None) == "label_watch"

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, Empty, ErrorBox, Failure, Field, Icon, ICONS, Modal, Problem, Rel, Section, Spinner, Switch, useBusy, useLoad } from "../components/ui.jsx";
-import { Progress, StateChip } from "../components/parts.jsx";
+import { CpuBadge, Progress, StateChip } from "../components/parts.jsx";
 import { usePoll } from "../components/hooks.js";
 import { ACTIVE_STATES, CATEGORIES, EFFORTS } from "../meta.js";
 import { duration, elapsed, gb, num, shortClock } from "../format.js";
@@ -14,7 +14,7 @@ function NewRun({ query }) {
   const modelsLoad = useLoad(() => api.call("models_list", { enabled: true, limit: 200 }), [version]);
   const [suites, setSuites] = useState(() => new Set(query.get("suite") ? [query.get("suite")] : []));
   const [models, setModels] = useState(() => new Set(query.get("model") ? [query.get("model")] : []));
-  const [settings, setSettings] = useState({ repeats: 1, temperature: 0, effort: "", context: "", max_tokens: "", timeout_s: "" });
+  const [settings, setSettings] = useState({ repeats: 1, temperature: 0, effort: "", device: "auto", context: "", max_tokens: "", timeout_s: "" });
   const [plan, setPlan] = useState(null);
   const [planError, setPlanError] = useState(null);
   const [busy, run] = useBusy();
@@ -37,6 +37,7 @@ function NewRun({ query }) {
     if (settings.repeats && Number(settings.repeats) !== 1) s.repeats = Number(settings.repeats);
     if (settings.temperature !== "" && Number(settings.temperature) !== 0) s.temperature = Number(settings.temperature);
     if (settings.effort) s.effort = settings.effort;
+    if (settings.device && settings.device !== "auto") s.device = settings.device;
     for (const k of ["context", "max_tokens", "timeout_s"]) if (settings[k] !== "") s[k] = Number(settings[k]);
     return { suites: [...suites], contestants: [...models].filter((id) => !blocked.has(id)), settings: s };
   }, [suites, models, settings, blocked]);
@@ -91,7 +92,7 @@ function NewRun({ query }) {
                   {m.not_served && <span className="help block" style={{ color: "var(--warn)" }}>{t("not_served_excluded", { reason: t.msg(m.not_served_reason) })}</span>}
                   {p && (
                     <span className="help block">
-                      {t.msg(p.where) || p.runs_on}{p.vram_mb ? ` · ${gb(p.vram_mb, lang)}` : ""} · {t("n_cases", { n: p.cases })}
+                      {t.msg(p.where) || p.runs_on}{p.vram_mb ? ` · ${gb(p.vram_mb, lang)}` : p.ram_mb ? ` · ${gb(p.ram_mb, lang)} RAM` : ""} · {t("n_cases", { n: p.cases })}
                       {p.warnings?.map((w, i) => <span key={i} className="block" style={{ color: "var(--warn)" }}>{t.msg(w)}</span>)}
                       {p.notes?.map((w, i) => <span key={i} className="block">{t.msg(w)}</span>)}
                     </span>
@@ -104,10 +105,11 @@ function NewRun({ query }) {
       </Section>
       <div className="lg:col-span-2 space-y-3">
         <Section title={t("run_settings")}>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
             <Field label={t("repeats")}><input className="field" type="number" min="1" max="20" value={settings.repeats} onChange={set("repeats")} /></Field>
             <Field label={t("temperature")}><input className="field" type="number" min="0" max="2" step="0.1" value={settings.temperature} onChange={set("temperature")} /></Field>
             <Field label={t("effort")}><select className="field" value={settings.effort} onChange={set("effort")}>{EFFORTS.map((e) => <option key={e} value={e}>{e ? t(`effort_${e}`) : t("effort_default")}</option>)}</select></Field>
+            <Field label={t("device")}><select className="field" value={settings.device} onChange={set("device")}>{["auto", "gpu", "cpu"].map((d) => <option key={d} value={d}>{t(`device_${d}`)}</option>)}</select></Field>
             <Field label={t("context_gguf")}><input className="field" type="number" min="512" placeholder="8192" value={settings.context} onChange={set("context")} /></Field>
             <Field label={t("max_tokens")}><input className="field" type="number" min="16" value={settings.max_tokens} onChange={set("max_tokens")} placeholder={t("per_suite")} /></Field>
             <Field label={t("timeout_s")}><input className="field" type="number" min="5" value={settings.timeout_s} onChange={set("timeout_s")} placeholder="120" /></Field>
@@ -186,7 +188,7 @@ function ResultRow({ r, runId }) {
         <td><Chip className={chip} title={r.truncated ? t("truncated_hint") : undefined}>{t(`res_${verdict}`)}</Chip>{r.self_judged && <Chip className="chip-amber">{t("self_judged")}</Chip>}</td>
         <td className="r num">{r.skipped ? "—" : num(r.score, 2, lang)}</td>
         <td className="r num">{duration(r.latency_ms)}</td>
-        <td className="r num">{r.decode_tps ? num(r.decode_tps, 1, lang) : "—"}</td>
+        <td className="r num">{r.decode_tps ? num(r.decode_tps, 1, lang) : "—"}{r.cpu && r.decode_tps ? <> <CpuBadge /></> : null}</td>
         <td className="r num">{r.completion_tokens ?? "—"}</td>
       </tr>
       {open && (
@@ -331,7 +333,7 @@ function RunDetail({ id }) {
       <div className="card-grid">
         {run.contestants.map((c) => (
           <div key={c.id} className="panel space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2"><b className="min-w-0 flex-1" style={{ overflowWrap: "anywhere" }}>{c.name}</b><StateChip state={c.state} /></div>
+            <div className="flex flex-wrap items-center gap-2"><b className="min-w-0 flex-1" style={{ overflowWrap: "anywhere" }}>{c.name}</b>{c.device === "cpu" && <CpuBadge />}<StateChip state={c.state} /></div>
             <Progress done={c.done} total={c.total} />
             <div className="help num">{c.done}/{c.total} · {t("passed")} {c.passed} · {t("res_error")} {c.errors} · {t("res_skip")} {c.skipped}{c.truncated > 0 ? ` · ${t("truncated_n", { n: c.truncated })}` : ""}</div>
             {c.runs_on && <div className="help">{t.msg(c.runs_on)}{c.vram_mb ? ` · ${gb(c.vram_mb, lang)}${c.vram_method ? ` (${c.vram_method})` : ""}` : ""}{c.load_ms != null ? ` · ${t("load")} ${num(c.load_ms / 1000, 1, lang)} s` : ""}</div>}

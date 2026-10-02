@@ -69,6 +69,8 @@ SPECS: list[Spec] = [
     Spec("runner.allow_ollama_load", "bool", False, "runner"),
     Spec("runner.timeout_s", "int", 120, "runner", low=5, high=3600),
     Spec("runner.gpu_wait_s", "int", 900, "runner", low=0, high=7200),
+    Spec("runner.cpu_fallback", "bool", True, "runner"),
+    Spec("runner.cpu_max_gb", "float", 4.0, "runner", low=0.1, high=256),
     Spec("runner.context", "int", 8192, "runner", low=512, high=1_048_576),
     Spec("runner.reasoning_tokens", "int", 8192, "runner", low=0, high=131_072),
     Spec("runner.check_threads", "int", 4, "runner", low=1, high=16),

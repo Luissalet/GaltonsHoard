@@ -171,6 +171,17 @@ def speed_summary(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
             "ttft_ms_median": r1(percentile(ttft, 50))}
 
 
+def speed_by_device(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    """The speed of one contestant without ever mixing devices: GPU (and server) measurements form the statistic; only when there are none do the CPU ones
+    (``cpu`` true). When both exist the CPU speed travels apart as ``cpu_decode_tps_median``."""
+    rows = list(rows)
+    other = speed_summary([r for r in rows if not r.get("cpu")])
+    on_cpu = speed_summary([r for r in rows if r.get("cpu")])
+    if other["n"] or not on_cpu["n"]:
+        return {**other, "cpu": False, "cpu_decode_tps_median": on_cpu["decode_tps_median"] if on_cpu["n"] else None}
+    return {**on_cpu, "cpu": True, "cpu_decode_tps_median": None}
+
+
 # ------------------------------------------------------------------------------------------------- arena
 Vote = tuple[str, str, str]  # (a, b, "a" | "b" | "tie" | "both_bad")
 

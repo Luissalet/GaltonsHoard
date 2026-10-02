@@ -26,9 +26,9 @@ RUN_FIELDS = ("label", "state", "suites", "contestants", "settings", "source", "
               "discard_reason", "discarded_ts")
 RC_JSON = ("gpus", "warnings")
 RC_FIELDS = ("state", "error", "load_ms", "vram_mb", "vram_method", "gpus", "context", "warnings", "total", "done", "digest", "runs_on", "spill",
-             "started_ts", "finished_ts", "wait_since", "waited_s")
+             "started_ts", "finished_ts", "wait_since", "waited_s", "device")
 RESULT_JSON = ("tool_calls", "detail")
-RESULT_FIELDS = ("truncated", "run_id", "contestant_id", "suite_id", "case_id", "category", "repeat", "output", "reasoning", "tool_calls", "score", "passed",
+RESULT_FIELDS = ("cpu", "truncated", "run_id", "contestant_id", "suite_id", "case_id", "category", "repeat", "output", "reasoning", "tool_calls", "score", "passed",
                  "detail", "latency_ms", "ttft_ms", "prompt_tokens", "completion_tokens", "decode_tps", "prompt_tps", "error", "skipped",
                  "unavailable", "self_judged", "judge_pending", "confidence", "weight", "digest")
 OUTPUT_CAP = 20_000
@@ -91,7 +91,10 @@ def _coded(data: Optional[dict[str, Any]], *fields: str) -> Optional[dict[str, A
 
 
 def _run(row: Any) -> Optional[dict[str, Any]]:
-    return _coded(_row(row, RUN_JSON, ("cancel", "discarded"), _R_DEFAULTS), "error", "label")
+    data = _coded(_row(row, RUN_JSON, ("cancel", "discarded"), _R_DEFAULTS), "error")
+    if data is not None:
+        data["label"] = messages.recognise(data.get("label"), prefix="label_")  # labels are free text; only our own label sentences are coded
+    return data
 
 
 def _rc(row: Any) -> Optional[dict[str, Any]]:
@@ -99,7 +102,7 @@ def _rc(row: Any) -> Optional[dict[str, Any]]:
 
 
 def _result(row: Any) -> Optional[dict[str, Any]]:
-    data = _coded(_row(row, RESULT_JSON, ("passed", "skipped", "unavailable", "self_judged", "judge_pending", "truncated"), _RES_DEFAULTS), "error")
+    data = _coded(_row(row, RESULT_JSON, ("passed", "skipped", "unavailable", "self_judged", "judge_pending", "truncated", "cpu"), _RES_DEFAULTS), "error")
     if data is not None and isinstance(data.get("detail"), dict) and isinstance(data["detail"].get("notes"), list):
         data["detail"]["notes"] = messages.recognise_all(data["detail"]["notes"])
     return data
@@ -374,7 +377,7 @@ class Store:
         """Result rows with their text. ``live_only`` leaves out the results of discarded runs (a run's own page still shows them)."""
         cols = "*" if with_output else ("id, run_id, contestant_id, suite_id, case_id, category, repeat, score, passed, detail, latency_ms, ttft_ms, "
                                         "prompt_tokens, completion_tokens, decode_tps, prompt_tps, error, skipped, unavailable, self_judged, "
-                                        "judge_pending, truncated, confidence, weight, digest, ts, '' AS output, '' AS reasoning, '[]' AS tool_calls")
+                                        "judge_pending, truncated, cpu, confidence, weight, digest, ts, '' AS output, '' AS reasoning, '[]' AS tool_calls")
         sql, params = f"SELECT {cols} FROM results WHERE 1=1", []
         for column, value in (("run_id", run_id), ("contestant_id", contestant_id), ("suite_id", suite_id), ("case_id", case_id)):
             if value:
@@ -415,7 +418,7 @@ class Store:
                      case_ids: Optional[Iterable[str]] = None, since_ts: float = 0.0, run_ids: Optional[Iterable[str]] = None) -> list[dict[str, Any]]:
         """Slim result rows (no text) for statistics. Skipped, unavailable and pending-judge rows are left out, and so are the results of discarded runs."""
         sql = ("SELECT id, run_id, contestant_id, suite_id, case_id, category, repeat, score, passed, latency_ms, ttft_ms, prompt_tokens, completion_tokens, "
-               "decode_tps, prompt_tps, confidence, weight, digest, ts, self_judged, truncated FROM results "
+               "decode_tps, prompt_tps, confidence, weight, digest, ts, self_judged, truncated, cpu FROM results "
                f"WHERE skipped = 0 AND unavailable = 0 AND judge_pending = 0 AND error = '' AND {LIVE}")
         params: list[Any] = []
         for column, values in (("contestant_id", contestant_ids), ("suite_id", suite_ids), ("case_id", case_ids), ("run_id", run_ids)):
@@ -432,7 +435,7 @@ class Store:
         return [dict(r) for r in self.db.query(sql, params)]
 
     def speed_rows(self, contestant_id: str, *, since_ts: float = 0.0, digest: str = "") -> list[dict[str, Any]]:
-        sql = ("SELECT decode_tps, prompt_tps, ttft_ms, latency_ms, completion_tokens FROM results WHERE contestant_id = ? AND skipped = 0 "
+        sql = ("SELECT decode_tps, prompt_tps, ttft_ms, latency_ms, completion_tokens, cpu FROM results WHERE contestant_id = ? AND skipped = 0 "
                f"AND unavailable = 0 AND error = '' AND decode_tps IS NOT NULL AND {LIVE}")
         params: list[Any] = [contestant_id]
         if digest:

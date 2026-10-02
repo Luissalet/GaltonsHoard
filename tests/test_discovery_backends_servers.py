@@ -766,3 +766,18 @@ def test_model_update_and_the_routes_only_keep_names(svc):
     assert out["model"]["aliases"] == ["beta"]
     dirty = {**svc.store.contestant(m["id"]), "aliases": ["beta", "/x/beta.gguf", "sha256-" + "2" * 64], "model": "", "ollama_ref": ""}
     assert names_for(dirty) == ["beta", "beta-q4"]
+
+
+def test_a_cpu_launch_has_no_layers_on_a_gpu_sets_the_threads_and_shows_no_gpu_to_the_child(launcher_parts, svc):
+    launcher, cmds, *_ = launcher_parts
+    spec = LaunchSpec(model_path="/m/x.gguf", name="x", context=4096, cpu=True, threads=10, grant=GpuGrant(gpus=[2, 3], shares_mb={2: 600, 3: 400}, via="test"))
+    cmd = launcher.command(spec, 8091, "x")
+    assert cmd[cmd.index("-ngl") + 1] == "0" and cmd[cmd.index("-t") + 1] == "10" and "--tensor-split" not in cmd
+    launcher.start(spec, timeout_s=30)
+    assert cmds[0][1]["env"]["CUDA_VISIBLE_DEVICES"] == "" and cmds[0][1]["env"]["CUDA_DEVICE_ORDER"] == "PCI_BUS_ID"
+
+
+def test_a_gpu_launch_is_unchanged_by_the_cpu_fields(launcher_parts):
+    launcher, *_ = launcher_parts
+    cmd = launcher.command(LaunchSpec(model_path="/m/x.gguf", name="x", grant=GpuGrant(gpus=[2], shares_mb={2: 600}, via="test")), 8091, "x")
+    assert cmd[cmd.index("-ngl") + 1] == "99" and "-t" not in cmd

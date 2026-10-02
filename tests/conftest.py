@@ -9,7 +9,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from galton_hoard import config as config_module, ollama_models, servers, settings as settings_module  # noqa: E402
+from galton_hoard import config as config_module, cpu as cpu_module, ollama_models, servers, settings as settings_module  # noqa: E402
 from helpers import Clock, add_gguf, build_services  # noqa: E402
 
 # Environment variables that change what the app finds on the machine: a test that wants one sets it itself.
@@ -39,6 +39,8 @@ def hermetic_host(tmp_path_factory, monkeypatch):
     monkeypatch.setattr(ollama_models, "CANDIDATES_WINDOWS", ())
     monkeypatch.setattr(ollama_models, "REGISTRY_LOCATIONS", ())          # the Windows registry of the host: no place to look in
     monkeypatch.setattr(servers, "which_on_path", lambda name: None)
+    monkeypatch.setattr(cpu_module, "physical_cores", lambda: 12)       # the processor and the free memory of the host are not the tests' business
+    monkeypatch.setattr(cpu_module, "ram_free_mb", lambda: None)
     monkeypatch.setattr(config_module, "REPO_ROOT", nowhere / "repo")  # no .env of the real checkout
 
 

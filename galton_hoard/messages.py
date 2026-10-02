@@ -121,6 +121,7 @@ ERRORS: dict[str, tuple[str, str]] = {
     "lease_not_allowed": ("The lease landed on GPU {granted}, which is not in the allowed list {allowed}.", "Galton never uses a GPU outside Settings > GPUs; nothing was loaded."),
     "cancelled_waiting_gpu": ("Cancelled while waiting for a GPU.", ""),
     "no_gpu_free": ("No allowed GPU has {need_gb} GB free.", "Wait for the other job to finish, free memory, or try again later."),
+    "cpu_no_ram": ("The model needs about {need_gb} GB of memory to run on the CPU and only {free_gb} GB are free.", "Close other programs, or wait until memory is free."),
     "no_gpu_free_waited": ("No allowed GPU has {need_gb} GB free after waiting.", "Wait for the other job to finish, free memory, or try again later."),
     "gpu_reserved": ("GPU {gpus} is reserved for the owner of this computer.", "Repeat the call with confirm_reserved=true only if the user explicitly allowed it."),
     # settings
@@ -156,13 +157,17 @@ TEXTS: dict[str, str] = {
     "where_server_resident": "server {url} (resident)",
     "where_gpus": "GPU {gpus}",
     "where_wait": "would wait for room on the allowed GPUs",
+    "where_cpu": "CPU (no GPU is free)",
+    "where_cpu_forced": "CPU (chosen in the run)",
     "runs_on_own": "llama.cpp (own) on GPU {gpus}",
+    "runs_on_cpu": "llama.cpp (own) on the CPU, {threads} threads",
     "runs_on_server": "llama-server {url}",
     "runs_on_ollama": "ollama {url}",
     "runs_on_ollama_loaded": "ollama {url} (loaded by Galton)",
     # notes and warnings of a plan or a run
     "note_vision_dropped": "{n} vision case(s) were not run: {name} has no vision",
     "warn_split": "split across GPUs {gpus} ({split})",
+    "warn_cpu": "Measured on the CPU ({threads} threads), not on a GPU: its speed is not comparable with GPU numbers",
     "warn_ollama_gpu": "Ollama decides which GPU it loads the model on; the lease only reserves the memory",
     "warn_spill": "{pct} % of the model is in system RAM, not on the GPU (speeds are lower than a full GPU load)",
     "warn_lease_hub": "GPU lease hub not reachable; local check only: {detail}",
@@ -341,6 +346,13 @@ def notice_text(kind: str, params: dict[str, Any]) -> tuple[str, str]:
 # the catalogue: every template becomes an anchored pattern whose placeholders take the parameter values. Rows written before the keys
 # existed are recognised the same way.
 GENERIC = {"chat_error"}  # a template that is only a placeholder would match anything
+MIN_LETTERS = 3  # letters of fixed text a template needs before it is used to recognise a stored sentence
+
+
+def _letters(key: str) -> int:
+    template = TEXTS.get(key) or ERRORS.get(key, ("",))[0]
+    fixed = re.sub(r"\{[a-z_][a-z0-9_]*\}", "", template)
+    return sum(ch.isalpha() for ch in fixed)
 
 
 def _pattern(template: str) -> tuple["re.Pattern[str]", tuple[str, ...], int]:
@@ -371,16 +383,22 @@ def _patterns() -> list[tuple["re.Pattern[str]", str, tuple[str, ...]]]:
                 found.append((*_pattern(template), key))
         for key, (template, _hint) in ERRORS.items():
             found.append((*_pattern(template), key))
+        # a template whose fixed text has no words ("{name}: {detail}") would claim any short sentence
+        found = [f for f in found if _letters(f[3]) >= MIN_LETTERS]
         found.sort(key=lambda f: -f[2])
         _PATTERNS.extend((rx, key, names) for rx, names, _literal, key in found)
     return _PATTERNS
 
 
-def recognise(value: Any) -> Any:
-    """``value`` as a ``CodedText`` when it is a sentence of the catalogue (a stored run keeps plain text), otherwise unchanged."""
+def recognise(value: Any, prefix: str = "") -> Any:
+    """``value`` as a ``CodedText`` when it is a sentence of the catalogue (a stored run keeps plain text), otherwise unchanged.
+
+    ``prefix`` limits the keys that may match (a run label is free text written by a person or another app: only ``label_*`` keys apply)."""
     if not isinstance(value, str) or isinstance(value, CodedText) or len(value) < 6:
         return value
     for rx, key, names in _patterns():
+        if prefix and not key.startswith(prefix):
+            continue
         found = rx.match(value)
         if found:
             return CodedText(value, key, {name: _number(found.group(f"p{i}")) for i, name in enumerate(names)})

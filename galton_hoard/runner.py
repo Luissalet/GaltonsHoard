@@ -19,7 +19,7 @@ from typing import Any, Callable, Iterator, Optional
 
 import httpx
 
-from . import adhoc, gguf_meta, identity, placement, suites as suite_lib
+from . import adhoc, cpu as cpu_lib, gguf_meta, identity, placement, suites as suite_lib
 from .backends import Backend, Cancelled, ChatRequest, Completion
 from .checkers import CheckContext, ModelOutput, run_checker
 from .errors import GaltonError
@@ -33,7 +33,8 @@ from .servers import LaunchSpec, probe_openai, slots_busy
 
 log = logging.getLogger("galton.runner")
 
-RUN_DEFAULTS: dict[str, Any] = {"temperature": 0.0, "top_p": None, "max_tokens": None, "effort": None, "repeats": 1, "seed": None, "context": None, "timeout_s": None, "wait_s": None}
+RUN_DEFAULTS: dict[str, Any] = {"temperature": 0.0, "top_p": None, "max_tokens": None, "effort": None, "repeats": 1, "seed": None, "context": None, "timeout_s": None, "wait_s": None, "device": "auto"}
+DEVICES = ("auto", "gpu", "cpu")
 TERMINAL = ("done", "failed", "cancelled")
 #: extra seconds of timeout per token of thinking allowance (a 27B model on one GPU thinks at 10-20 tokens per second; this leaves room for the slow end)
 SECONDS_PER_REASONING_TOKEN = 0.1
@@ -66,6 +67,9 @@ def normalise_settings(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
     number("context", 512, 1_048_576, True)
     number("timeout_s", 5, 3600)
     number("wait_s", 0, 7200)
+    out["device"] = str(out["device"]).strip().lower() or "auto"
+    if out["device"] not in DEVICES:
+        raise GaltonError("invalid", "setting_choice", setting="device", options=list(DEVICES))
     if out["effort"] is not None:
         level = reasoning.normalize(out["effort"])
         if level is None and str(out["effort"]).lower() != "auto":
@@ -86,6 +90,7 @@ class Session:
     vram_mb: Optional[int] = None
     vram_method: str = ""
     gpus: list[int] = field(default_factory=list)
+    device: str = ""                    # cpu: a llama-server of our own on the processor (its speed is not a GPU speed); gpu: our own on GPUs; "": a shared server
     warnings: list[str] = field(default_factory=list)
     spill: Callable[[], str] = lambda: ""
     reasons: Optional[bool] = None      # does the model think before it answers? None while unknown
@@ -109,12 +114,15 @@ class Runner:
     def __init__(self, store: Any, settings: Any, gpus: GpuManager, launcher: Any, backend_factory: Callable[..., Backend], *, images_dir: Path,
                  clock: Callable[[], float] = time.time, sleep: Callable[[float], None] = time.sleep, family_call: Optional[Callable[..., dict[str, Any]]] = None,
                  emit: Optional[Callable[[str, dict[str, Any]], None]] = None, client_factory: Optional[Callable[[], httpx.Client]] = None,
-                 meta_reader: Callable[[Any], dict[str, Any]] = gguf_meta.read_meta, digest_fn: Callable[[Any], str] = gguf_meta.file_digest):
+                 meta_reader: Callable[[Any], dict[str, Any]] = gguf_meta.read_meta, digest_fn: Callable[[Any], str] = gguf_meta.file_digest,
+                 cpu_threads: Optional[Callable[[], int]] = None, ram_free_mb: Optional[Callable[[], Optional[int]]] = None):
         self.store, self.settings, self.gpus, self.launcher, self.backend_factory = store, settings, gpus, launcher, backend_factory
         self.images_dir, self.clock, self.sleep, self.family_call = images_dir, clock, sleep, family_call
         self.emit = emit or (lambda *_: None)
         self.client_factory = client_factory or (lambda: httpx.Client(trust_env=False, timeout=5.0))
         self.meta_reader, self.digest_fn = meta_reader, digest_fn
+        self.cpu_threads = cpu_threads or (lambda: cpu_lib.cpu_threads())       # looked up when asked, so tests can replace the module's functions
+        self.ram_free_mb = ram_free_mb or (lambda: cpu_lib.ram_free_mb())
         self._cancel: dict[str, threading.Event] = {}
         self._lock = threading.Lock()
         self.active_run: Optional[str] = None
@@ -282,9 +290,26 @@ class Runner:
         info = placement.gguf_info(self.store, c, self.meta_reader)
         context = placement.choose_context(int(rs["context"] or self.settings.get("runner.context")), info)
         need = placement.estimate_mb(self.store, c, context, self.meta_reader)
-        note("waiting_gpu")
-        grant = self.gpus.acquire(need, f"galton: {c['name']}"[:100], wait_s=self._wait_s(rs, "runner.gpu_wait_s"), cancel=cancel,
-                                  on_wait=lambda msg: log.info("%s: %s", c["name"], msg))
+        device = rs.get("device") or "auto"
+        cpu_ok = placement.cpu_eligible(self.settings, c, device)
+        grant = None
+        if device != "cpu":
+            note("waiting_gpu")
+            # A small file that may run on the CPU does not queue for a GPU: it waits only as long as the run asked for (``wait_s``, default none).
+            wait = (float(rs["wait_s"]) if rs.get("wait_s") is not None else 0.0) if cpu_ok else self._wait_s(rs, "runner.gpu_wait_s")
+            try:
+                grant = self.gpus.acquire(need, f"galton: {c['name']}"[:100], wait_s=wait, cancel=cancel, on_wait=lambda msg: log.info("%s: %s", c["name"], msg))
+            except GaltonError as exc:
+                if not (cpu_ok and exc.code == "no_gpu" and self._ram_fits(need) is None):
+                    raise
+                log.info("%s: no allowed GPU is free (%s); running on the CPU", c["name"], exc.message)
+        if grant is None:
+            problem = self._ram_fits(need)
+            if problem is not None:
+                raise problem
+            with self._cpu_session(c, context, need, cancel, note) as session:
+                yield session
+            return
         try:
             note("running")
             before = self.gpus.used_mb(grant.gpus)
@@ -299,13 +324,38 @@ class Runner:
                 reasons, how = self.detect_reasoning(c, url=handle.url, api="openai")
                 try:
                     yield Session(backend=backend, runs_on=text("runs_on_own", gpus=",".join(str(g) for g in grant.gpus)), url=handle.url, context=context, load_ms=handle.load_ms,
-                                  vram_mb=vram, vram_method=method, gpus=list(grant.gpus), warnings=warnings, reasons=reasons, reasons_how=how)
+                                  vram_mb=vram, vram_method=method, gpus=list(grant.gpus), device="gpu", warnings=warnings, reasons=reasons, reasons_how=how)
                 finally:
                     backend.close()
             finally:
                 handle.stop()
         finally:
             grant.release()
+
+    def _ram_fits(self, need_mb: int) -> Optional[GaltonError]:
+        """``None`` when the memory a CPU run needs is free (or the system does not say), else the error to raise."""
+        free = self.ram_free_mb()
+        if free is not None and need_mb > free:
+            return GaltonError("busy", "cpu_no_ram", need_gb=f"{need_mb / 1024:.1f}", free_gb=f"{free / 1024:.1f}")
+        return None
+
+    @contextmanager
+    def _cpu_session(self, c: dict[str, Any], context: int, need: int, cancel: Callable[[], bool], note: Callable[[str], None]) -> Iterator[Session]:
+        """A llama-server of our own on the processor: no layers on a GPU, no GPU visible to it, no lease."""
+        threads = int(self.cpu_threads())
+        note("running")
+        handle = self.launcher.start(LaunchSpec(model_path=c["path"], name=c["name"], context=context, mmproj_path=c["mmproj"] or None, grant=None, cpu=True, threads=threads),
+                                     cancel=cancel)
+        try:
+            backend = self.backend_factory("openai", handle.url, handle.alias)
+            reasons, how = self.detect_reasoning(c, url=handle.url, api="openai")
+            try:
+                yield Session(backend=backend, runs_on=text("runs_on_cpu", threads=threads), url=handle.url, context=context, load_ms=handle.load_ms, vram_mb=None, vram_method="cpu",
+                              gpus=[], device="cpu", warnings=[text("warn_cpu", threads=threads)], reasons=reasons, reasons_how=how)
+            finally:
+                backend.close()
+        finally:
+            handle.stop()
 
     @contextmanager
     def _server_session(self, c: dict[str, Any], rs: dict[str, Any], cancel: Callable[[], bool], note: Callable[[str], None]) -> Iterator[Session]:
@@ -516,9 +566,10 @@ class Runner:
         return run_checker(case["checker"], output, ctx), pending["flag"]
 
     def _store_result(self, run: dict[str, Any], contestant: dict[str, Any], suite: dict[str, Any], case: dict[str, Any], repeat: int, completion: Completion,
-                      judge: Optional[Callable[[dict[str, Any]], dict[str, Any]]], rc_counter: Callable[[], None]) -> None:
+                      judge: Optional[Callable[[dict[str, Any]], dict[str, Any]]], rc_counter: Callable[[], None], cpu: bool = False) -> None:
+        """Check one answer and store it. ``cpu``: the model ran on the processor, so the stored speed is flagged and never counted as a GPU speed."""
         base = dict(run_id=run["id"], contestant_id=contestant["id"], suite_id=suite["id"], case_id=case["id"], category=suite["category"], repeat=repeat,
-                    weight=float(case.get("weight") or 1.0), digest=contestant["digest"])
+                    weight=float(case.get("weight") or 1.0), digest=contestant["digest"], cpu=cpu)
         timing = dict(latency_ms=completion.latency_ms, ttft_ms=completion.ttft_ms, prompt_tokens=completion.prompt_tokens, completion_tokens=completion.completion_tokens,
                       decode_tps=completion.decode_tps, prompt_tps=completion.prompt_tps)
         try:
@@ -619,7 +670,7 @@ class Runner:
         try:
             with self.session(contestant, rs, cancel, note_state) as session:
                 self.store.upsert_run_contestant(run_id, cid, state="running", runs_on=session.runs_on, load_ms=session.load_ms, vram_mb=session.vram_mb, vram_method=session.vram_method,
-                                                 gpus=session.gpus, context=session.context, warnings=[*notes, *session.warnings, *self._reasoning_warning(rs, session)])
+                                                 gpus=session.gpus, device=session.device, context=session.context, warnings=[*notes, *session.warnings, *self._reasoning_warning(rs, session)])
                 started_with = [*notes, *session.warnings, *self._reasoning_warning(rs, session)]
                 shown[:] = started_with
                 judge = self._judge_for(contestant, session, cancel)
@@ -632,7 +683,7 @@ class Runner:
                 held: list[tuple[dict[str, Any], dict[str, Any], int, Completion]] = []
 
                 def store_now(suite: dict[str, Any], case: dict[str, Any], repeat: int, completion: Completion) -> None:
-                    futures.append(pool.submit(self._store_result, run, contestant, suite, case, repeat, completion, inline, tick))
+                    futures.append(pool.submit(self._store_result, run, contestant, suite, case, repeat, completion, inline, tick, session.device == "cpu"))
 
                 def release() -> None:
                     while held:
@@ -860,5 +911,5 @@ class Runner:
                 return {"contestant": contestant["name"], "error": completion.error, "notes": completion.notes}
             verdict, pending = self.check(case, completion, contestant["id"], judge)
         return {"contestant": contestant["name"], "output": completion.text, "reasoning": completion.reasoning, "tool_calls": completion.tool_calls, "verdict": verdict,
-                "judge_pending": pending, "latency_ms": completion.latency_ms, "ttft_ms": completion.ttft_ms, "decode_tps": completion.decode_tps,
+                "judge_pending": pending, "cpu": session.device == "cpu", "latency_ms": completion.latency_ms, "ttft_ms": completion.ttft_ms, "decode_tps": completion.decode_tps,
                 "completion_tokens": completion.completion_tokens, "notes": completion.notes, "runs_on": session.runs_on}
