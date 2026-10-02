@@ -10,16 +10,17 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any, Callable, Optional
 
 import httpx
 
 from . import placement, stats
 from .errors import GaltonError
+from .hoard_link import notify_channels
 from .messages import text
 from .servers import probe_openai
 from .store import ACTIVE_RUN_STATES
-from .util import in_quiet_hours
 
 log = logging.getLogger("galton.watch")
 SMOKE_SUITE = "s_rapida"
@@ -119,6 +120,12 @@ class Watch:
         return (True, "an allowed GPU has room") if self.gpus.plan(need_mb) else (False, "no allowed GPU has room right now")
 
     # ------------------------------------------------------------------ the tick
+    def in_quiet_hours(self, ts: float) -> bool:
+        """Is ``ts`` inside the quiet window (``watch.quiet_from`` .. ``watch.quiet_to``, hours; it may wrap over midnight)? The shared window
+        logic of Hoard Link, which holds everything but urgent notices; the watch is never urgent."""
+        start, end = float(self.settings.get("watch.quiet_from")), float(self.settings.get("watch.quiet_to"))
+        return notify_channels.in_quiet_hours(datetime.fromtimestamp(ts), round(start * 60), round(end * 60), allow_high=False)
+
     def tick(self) -> dict[str, Any]:
         """Probe the servers, then queue at most one quick run if a candidate may be measured now."""
         now = self.clock()
@@ -131,7 +138,7 @@ class Watch:
         if self.settings.get("scheduler.paused"):
             decision["skipped"] = "the scheduler is paused"
             return decision
-        if in_quiet_hours(now, float(self.settings.get("watch.quiet_from")), float(self.settings.get("watch.quiet_to"))):
+        if self.in_quiet_hours(now):
             decision["skipped"] = "quiet hours"
             return decision
         if self.runner.active_run or self.store.runs(states=ACTIVE_RUN_STATES, limit=1):
