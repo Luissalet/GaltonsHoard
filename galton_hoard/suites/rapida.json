@@ -1,0 +1,59 @@
+{
+ "id": "rapida",
+ "name": "Prueba rápida",
+ "category": "custom",
+ "version": 1,
+ "max_tokens": 600,
+ "position": 13,
+ "description": "Doce casos sacados de las demás pruebas, rápidos de ejecutar. La vigilancia de regresiones la usa para comprobar que un modelo sigue igual. No cuenta para las rutas.",
+ "picks": [
+  {
+   "suite": "razonamiento",
+   "title": "Hora de llegada de un tren"
+  },
+  {
+   "suite": "razonamiento",
+   "title": "Apretones de manos"
+  },
+  {
+   "suite": "matematicas",
+   "title": "Ecuación lineal"
+  },
+  {
+   "suite": "matematicas",
+   "title": "Probabilidad con dos dados"
+  },
+  {
+   "suite": "codigo-python",
+   "title": "FizzBuzz como lista"
+  },
+  {
+   "suite": "codigo-python",
+   "title": "Fusionar intervalos"
+  },
+  {
+   "suite": "extraccion",
+   "title": "Factura de suministros"
+  },
+  {
+   "suite": "extraccion",
+   "title": "Aviso de envío"
+  },
+  {
+   "suite": "herramientas",
+   "title": "Tiempo en una ciudad"
+  },
+  {
+   "suite": "herramientas",
+   "title": "Dos llamadas en paralelo"
+  },
+  {
+   "suite": "instrucciones",
+   "title": "Frase de exactamente 12 palabras"
+  },
+  {
+   "suite": "rag-citas",
+   "title": "Fecha de inauguración"
+  }
+ ]
+}

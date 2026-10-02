@@ -1,0 +1,589 @@
+{
+ "id": "traduccion",
+ "name": "Traducción",
+ "description": "Traducciones castellano-inglés en ambos sentidos con términos clave comprobables.",
+ "category": "translation",
+ "version": 1,
+ "max_tokens": 500,
+ "position": 9,
+ "cases": [
+  {
+   "title": "Aviso de reunión al inglés",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al inglés:\n\nLa reunión del equipo se ha aplazado hasta el jueves por la mañana porque la directora está de viaje."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "meeting",
+       "Thursday"
+      ],
+      "none": [
+       "reunión",
+       "jueves",
+       "directora"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "en"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "postponed",
+       "delayed",
+       "rescheduled",
+       "put off"
+      ],
+      "words": true
+     }
+    ]
+   },
+   "reference": "The team meeting has been postponed until Thursday morning because the director is travelling.",
+   "tags": [
+    "traducción",
+    "es-en"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Instrucciones de montaje al inglés",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al inglés:\n\nAntes de montar la estantería, comprueba que tienes todos los tornillos y que el suelo está nivelado."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "shelf",
+       "screws",
+       "floor"
+      ],
+      "none": [
+       "estantería",
+       "tornillos"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "en"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "level",
+       "even",
+       "flat"
+      ],
+      "words": true
+     }
+    ]
+   },
+   "reference": "Before assembling the shelf, check that you have all the screws and that the floor is level.",
+   "tags": [
+    "traducción",
+    "es-en"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Contrato: términos jurídicos al inglés",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al inglés:\n\nEl arrendatario se compromete a abonar la renta durante los primeros cinco días de cada mes y a conservar la vivienda en buen estado."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "tenant",
+       "rent"
+      ],
+      "none": [
+       "arrendatario",
+       "renta"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "en"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "month",
+       "months"
+      ],
+      "words": true
+     },
+     {
+      "type": "judge",
+      "rubric": "La traducción es fiel al original, natural en el idioma de destino, sin omisiones ni añadidos y sin errores gramaticales."
+     }
+    ]
+   },
+   "reference": "The tenant undertakes to pay the rent within the first five days of each month and to keep the property in good condition.",
+   "tags": [
+    "traducción",
+    "es-en"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Frase hecha al inglés",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al inglés:\n\nAunque no conozco la ciudad, me las apañé para encontrar el hotel sin preguntar a nadie."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "city",
+       "hotel"
+      ],
+      "none": [
+       "ciudad",
+       "preguntar"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "en"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "managed",
+       "figured",
+       "found a way",
+       "got by"
+      ],
+      "words": true
+     }
+    ]
+   },
+   "reference": "Although I did not know the city, I managed to find the hotel without asking anyone.",
+   "tags": [
+    "traducción",
+    "es-en"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Texto con cifras y fechas al inglés",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al inglés:\n\nEl museo recibió 48.500 visitantes en 2024, un 12 % más que el año anterior."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "museum",
+       "2024"
+      ],
+      "none": [
+       "museo",
+       "visitantes"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "en"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "48,500",
+       "48.500",
+       "48 500",
+       "48500"
+      ],
+      "words": true
+     },
+     {
+      "type": "contains",
+      "any": [
+       "12%",
+       "12 %",
+       "12 percent",
+       "12 per cent"
+      ],
+      "words": true
+     }
+    ]
+   },
+   "reference": "The museum received 48,500 visitors in 2024, 12% more than the previous year.",
+   "tags": [
+    "traducción",
+    "es-en"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Correo cortés al inglés",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al inglés:\n\nLe agradecería que me confirmara la recepción de este mensaje en cuanto le sea posible."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "confirm",
+       "message"
+      ],
+      "none": [
+       "agradecería",
+       "mensaje"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "en"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "receipt",
+       "received",
+       "receiving",
+       "reception"
+      ],
+      "words": true
+     },
+     {
+      "type": "judge",
+      "rubric": "La traducción es fiel al original, natural en el idioma de destino, sin omisiones ni añadidos y sin errores gramaticales."
+     }
+    ]
+   },
+   "reference": "I would appreciate it if you could confirm receipt of this message as soon as possible.",
+   "tags": [
+    "traducción",
+    "es-en"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Noticia breve al castellano",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al castellano de España:\n\nThe city council has approved a new bike lane that will connect the train station with the university campus."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "carril bici",
+       "estación",
+       "campus"
+      ],
+      "none": [
+       "council",
+       "station"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "ayuntamiento",
+       "consistorio",
+       "concejo"
+      ],
+      "words": true
+     }
+    ]
+   },
+   "reference": "El ayuntamiento ha aprobado un nuevo carril bici que unirá la estación de tren con el campus universitario.",
+   "tags": [
+    "traducción",
+    "en-es"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Manual técnico al castellano",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al castellano de España:\n\nPress and hold the power button for five seconds to reset the device to its factory settings."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "botón",
+       "cinco segundos"
+      ],
+      "none": [
+       "button",
+       "device",
+       "seconds"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "dispositivo",
+       "aparato",
+       "equipo"
+      ],
+      "words": true
+     },
+     {
+      "type": "contains",
+      "any": [
+       "fábrica"
+      ],
+      "words": true
+     }
+    ]
+   },
+   "reference": "Mantén pulsado el botón de encendido durante cinco segundos para restablecer el dispositivo a los valores de fábrica.",
+   "tags": [
+    "traducción",
+    "en-es"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Expresión coloquial al castellano",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al castellano de España:\n\nI was so tired that I fell asleep as soon as my head hit the pillow."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "cansado",
+       "almohada"
+      ],
+      "none": [
+       "tired",
+       "pillow",
+       "asleep"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "dormí",
+       "dormido",
+       "dormida",
+       "quedé dormido",
+       "quedé dormida",
+       "dormirme"
+      ],
+      "words": true
+     }
+    ]
+   },
+   "reference": "Estaba tan cansado que me quedé dormido en cuanto apoyé la cabeza en la almohada.",
+   "tags": [
+    "traducción",
+    "en-es",
+    "coloquial"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Texto científico al castellano",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al castellano de España:\n\nResearchers found that the new battery keeps 90 percent of its capacity after a thousand charging cycles."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "investigadores",
+       "batería",
+       "90"
+      ],
+      "none": [
+       "researchers",
+       "battery",
+       "capacity"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "capacidad"
+      ],
+      "words": true
+     },
+     {
+      "type": "contains",
+      "any": [
+       "ciclos"
+      ],
+      "words": true
+     },
+     {
+      "type": "judge",
+      "rubric": "La traducción es fiel al original, natural en el idioma de destino, sin omisiones ni añadidos y sin errores gramaticales."
+     }
+    ]
+   },
+   "reference": "Los investigadores descubrieron que la nueva batería conserva el 90 % de su capacidad tras mil ciclos de carga.",
+   "tags": [
+    "traducción",
+    "en-es"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Aviso legal al castellano",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al castellano de España:\n\nBy continuing to use this website you agree to the processing of your personal data as described in our privacy policy."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "datos personales",
+       "política de privacidad"
+      ],
+      "none": [
+       "website",
+       "personal data",
+       "privacy policy"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "sitio web",
+       "web",
+       "página web"
+      ],
+      "words": true
+     }
+    ]
+   },
+   "reference": "Si continúas usando este sitio web, aceptas el tratamiento de tus datos personales según se describe en nuestra política de privacidad.",
+   "tags": [
+    "traducción",
+    "en-es"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Falso amigo: realizar una compra",
+   "prompt": {
+    "system": "Eres un traductor profesional. Devuelves solo la traducción, sin comentarios, notas ni comillas.",
+    "text": "Traduce al castellano de España:\n\nWe actually need to cancel the order because the item is out of stock."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "contains",
+      "all": [
+       "pedido",
+       "cancelar"
+      ],
+      "none": [
+       "actualmente",
+       "order",
+       "stock"
+      ],
+      "words": true
+     },
+     {
+      "type": "constraints",
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "agotado",
+       "sin existencias",
+       "sin stock",
+       "no hay existencias",
+       "no está disponible"
+      ],
+      "words": true
+     },
+     {
+      "type": "contains",
+      "any": [
+       "en realidad",
+       "de hecho",
+       "realmente"
+      ],
+      "words": true
+     }
+    ]
+   },
+   "reference": "En realidad tenemos que cancelar el pedido porque el artículo está agotado.",
+   "tags": [
+    "traducción",
+    "en-es",
+    "falso amigo"
+   ],
+   "max_tokens": 400
+  }
+ ]
+}

@@ -1,0 +1,109 @@
+# Architecture
+
+```
+ models:  Ollama (/api/tags, /api/ps, manifests on disk) · llama-server ports 8080-8090 · Faustus registry · GGUF folders · specs given by callers
+              │
+              ▼
+ identity.py: what a shared server serves now ─► guard before a contestant and before each case; answers held until a fresh look
+ discovery.py ──► store.py (contestants: server | gguf, digest, aliases, enabled, missing, adhoc)
+                      ▲
+ suites/*.json + generators/ ──► suites/__init__.py (sync, content hash, versions) ──► store.py (suites, cases)
+                      │
+ run_start ──► runner.py ── per contestant a session ───────────────┬─► server already up: probe, wait until idle, call
+              (one run at a time, on the "gpu" lane)               └─► gguf: gpus.py (plan + lease per GPU) ─► servers.py (own llama-server, 8091-8099)
+                      │                                                   │ chat via backends.py (chat-completions stream | Ollama NDJSON)
+                      │ answer ──► checkers/ (thread pool) ──► result row (score, detail, timings, digest)     ▼ stop, kill the tree, release the leases
+                      ▼
+ store.scoring_rows ──► stats.py (Wilson, bootstrap, McNemar, paired bootstrap, Bradley-Terry)
+                      ├──► board.py: leaderboard · compare · recommend
+                      ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
+                      ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
+                      └──► arena.py: blind pairs from stored answers, votes, ratings
+ agent_tools.py: one catalogue (43 tools) ──► api/agent.py (Bearer token) · api/ui.py (local) · mcp_server.py (stdio bridge)
+ scheduler.py: lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
+```
+
+## Layout
+
+| Path | Role |
+|---|---|
+| `galton_hoard/main.py` | App factory: guard middleware, error handlers, routers, single-page client |
+| `galton_hoard/config.py` | Process settings from the environment (`GALTON_*`, `HOARD_ROUTES_FILE`) and `.env`; paths under `data/` |
+| `galton_hoard/db.py`, `store.py` | Schema and migrations (SQLite, WAL); every query |
+| `galton_hoard/settings.py` | Typed settings with bounds; reserved GPUs need a confirmation; secrets are masked when listed |
+| `galton_hoard/identity.py` | Identity of a server contestant (address, model ids, alias, model file, Ollama digest): `judge`, the 20 s guard, TOFU pin for hand-given specs, the `not_served` mark |
+| `galton_hoard/discovery.py` | Finds models and keeps contestants in step; nothing is deleted, a vanished model is marked missing |
+| `galton_hoard/ollama_models.py`, `gguf_meta.py` | Ollama manifests to GGUF blobs; a pure-Python GGUF header reader; memory estimate; file digest |
+| `galton_hoard/adhoc.py` | Turns an id, a name or a spec (`gguf`, `ollama`, `server`) into a contestant, evaluation-only when unregistered |
+| `galton_hoard/placement.py` | Context choice, memory estimate and where a model would run, for the UI and the plan |
+| `galton_hoard/gpus.py` | Allowed and reserved GPUs, planning, a lease per GPU, tensor split, honest "does not fit" errors |
+| `galton_hoard/servers.py`, `procs.py`, `port.py` | Own llama-server launcher (ports 8091-8099), process tree kill, registry of children, probes of running servers |
+| `galton_hoard/backends.py` | Streaming clients for chat-completions servers and Ollama with timings; tool fallback; reasoning-field retry |
+| `galton_hoard/idle.py` | Waiting politely for a shared server: `wait_until_idle`, `LlamaGuard`, `OllamaGuard` |
+| `galton_hoard/runner.py` | Runs: sessions, progress, cancel, skip reasons, judge hand-over, per-run settings. Sessions on a shared server are guarded: answers are held in memory and stored only after a look made after them still finds the same model; otherwise they are dropped (`warn_results_dropped`) and the contestant stops with `server_changed` |
+| `galton_hoard/checkers/` | The checkers; `all` and `any` combine others; judge and family checks are services of the context. `mathcheck` normalises LaTeX (`latex_to_text`, `clean_expression`) before sympy and compares the part after the last `=` of the answer line; `numberwords` evaluates Spanish and English number words and ordinals for `number` when the answer line has no digits; `textutil.answer_part` implements the option `scope: "answer"` of `contains`, `regex` and `constraints`; `jsoncheck` compares expected fields with per-field rules such as `strict`, `contains` and `norm` (equal once a leading generic word like sala or calle is stripped, `strip_generic`) |
+| `galton_hoard/generators/` | Long-context haystacks and vision images (Pillow), seeded |
+| `galton_hoard/suites/` | Built-in suites as JSON, validated and synced into the database |
+| `galton_hoard/judging.py` | Judge calls, cache by hash, self-judged marking, pending hand-over |
+| `galton_hoard/importer.py` | JSONL and CSV import and the one-line checker shorthand |
+| `galton_hoard/stats.py` | Intervals, paired tests, speed summaries, arena ratings |
+| `galton_hoard/board.py` | Leaderboard, comparison and recommendation, computed at request time |
+| `galton_hoard/routes.py` | The routing policy and the published `routes.json` |
+| `galton_hoard/watch.py`, `scheduler.py` | Regression watch and the two background lanes |
+| `galton_hoard/arena.py` | Blind pairs, votes, ratings |
+| `galton_hoard/services.py` | Wires everything from a `Config`; dashboard, status and overview views |
+| `galton_hoard/agent_tools.py` | The tool catalogue: name, description, pydantic arguments, annotations, handler |
+| `galton_hoard/api/` | REST: `agent.py`, `ui.py`, `runs.py` (events of a run), `health.py`, `pwa.py` |
+| `galton_hoard/fakes.py` | Fake GPUs, leases, launcher and models for the tests and the demo mode |
+| `galton_hoard/hoard_link/` | Vendored family library (event bus, leases, calls to other apps). Not edited here |
+| `mcp_server.py` | stdio bridge: proxies to the running app, starts it when needed |
+| `client/` | React 19 + Vite 6 + Tailwind 4 UI; built into `galton_hoard/static` |
+
+## Models (contestants)
+
+A contestant is either a `server` (a URL, an API kind, either the chat-completions style that llama-server speaks or `ollama`, and a model name) or a `gguf` (a file on disk, optionally with a projector). An Ollama model whose blob is on disk appears twice: as a server, disabled by default, and as a `gguf` twin that Galton runs itself. Every contestant has a digest (Ollama digest, or the hash of the first 16 MB of the file plus its size), aliases (every name other apps may know it by: `util.clean_aliases` keeps only names a server or app can report, never a file path or a `sha256-…` blob stem; `Store.clean_aliases` rewrites older rows at start, `names_for` filters again when the table is built), and flags: `enabled`, `missing`, `adhoc` (given by a caller, evaluation only), `remote` and `remote_ok`. Remote endpoints are never called unless the model was enabled for it. A llama-server whose `/props` model path is a blob of the Ollama store shares weights with the Ollama tags whose manifest names that blob: `Discovery._link_same_weights` adds each side's names as aliases of the other and records the siblings in `meta.same_weights` (shown in the model detail). A server that lists models but cannot chat (no chat template per `/props`, or a 404/500 to one one-token request) gets `meta.chat = {ok: false, ...}` once, is disabled and raises no `new_model` notice; the verdict is asked again after six hours or for another model id. The Ollama store folder is chosen by `ollama_models.store_dirs`: the setting, `OLLAMA_MODELS` from the environment or from the Windows registry (user, then machine), then the defaults, keeping the candidate whose `manifests` hold files.
+
+## Runs
+
+`Services.start_run` resolves suites and contestants, runs a preflight (a GGUF that cannot fit the allowed GPUs is refused up front when every model is impossible, otherwise it fails alone later and says why), creates the run and queues it on the GPU lane. `Runner.execute` goes contestant by contestant:
+
+1. Open a session. For a server: probe it and, while somebody else is using it, wait (`idle.wait_until_idle`: the contestant is `waiting_server`, `run_contestants.wait_since` and `waited_s` record how long) until it has been quiet for `runner.idle_grace_s`, giving up with `server_busy` after `runner.wait_idle_max_s` (0: never; the run's `wait_s` overrides it); `LlamaGuard` (`/slots`) or `OllamaGuard` (the `expires_at` picture of `/api/ps`, refreshed after each of our own questions) is kept in the session and `Runner.yield_to_others` repeats the wait before every case when the server turned out busy with a request that is not ours; an Ollama model that is not loaded is skipped unless `runner.allow_ollama_load`. For a GGUF: choose a context (the smaller of the requested and the trained one), estimate memory, plan and lease the GPUs, start llama-server, wait for `/health`, record load time and the memory it took.
+2. Ask each planned case. `Runner.detect_reasoning` decides per session whether the model reasons (`/props` chat template via `servers.template_reasons`, Ollama `/api/show` capabilities, else what was stored in `meta.reasons`; demo contestants are never probed). `build_request` puts the case's answer budget plus `reasoning_allowance` in `ChatRequest.max_tokens` (allowance = `max(runner.reasoning_tokens, hoard_link.reasoning.budget_for(effort))` for a model that reasons when the effort is not `off`; 0 switches it off), adds 0.1 s per allowed token to the timeout and sets `ChatRequest.reasoning_tokens` so that the backends restore `max_tokens`/`num_predict` after the vendored `apply_*` widening. `Runner.ask` learns reasoning from an answer that carries reasoning content (`meta.reasons_how = answer`) and repeats once, with the allowance, an answer cut before it started. `Completion.truncated` (finish reason `length`, empty visible text, no tool call, no error) is stored in `results.truncated` (migration 2, backfilled from older details) and counted by `stats.truncation`. Generated prompts (long context, vision) are built from the case seed. Cases that need tools or images the model cannot take are skipped with a stored reason.
+3. Check each answer in a thread pool while the next question is asked. Results are written one by one, so the UI shows progress and a cancelled run keeps what it measured. A failed request is stored with its error and left out of the statistics.
+4. Close the session: stop the server, kill the tree, release the leases. A launcher or lease failure marks that contestant failed and the run goes on; when every contestant failed the run is `failed`.
+
+Judge cases are graded in the same pass when the judge is live; otherwise they wait as `judge_pending` and `judge_run` grades them later. When the judge is the very model (or the very server address) being measured, its grades are not asked between the questions: the answers are stored as pending and graded right after that contestant's last case, so grading never delays a question whose latency and first-token time are recorded.
+
+## Statistics
+
+Results of the same case are averaged first: the case is the unit and repeats only reduce noise. Truncated results count as wrong answers in the score but are reported next to it: per model on the run page and the leaderboard, and `stats.truncation` flags a category with more than 5 % of them (`TRUNCATED_WARN_SHARE`), which `Board.leaderboard`, `Routes.evaluate` (`detail[category].warnings`) and `recommend` turn into the `board_truncated` warning. Score summaries use a seeded bootstrap (2000 resamples) and pass rates use Wilson. A comparison pairs the two models on shared cases: exact McNemar on pass/fail, a paired bootstrap on score differences, and a verdict. The leaderboard sorts by the lower bound of the interval. Arena ratings are Bradley-Terry fitted on the votes, with a minimum number of votes (`arena.min_votes`).
+
+## Routing table
+
+`routes.py` evaluates each task category (`general`, `code`, `extraction`, `tool_use`, `long_context`, `rag`, `vision`, `summary`, `translation`, `math`, `writing_es`) against the suites that belong to it, applying the policy in `routes.policy`. `routes_get` shows the proposed table, the published one and the difference; `routes_publish` writes the file with a temporary file and `os.replace`, records the publication and emits `galton.routes.updated`. The schema is `{schema: 1, source: "galton", updated_at, tasks: {name: {capability, prefer: [{names, score, ci, n, tok_s, vram_gb}], explain}}, capabilities: {llm, vision}}`.
+
+## Watch
+
+Every minute the io lane calls `Watch.tick`: probe the shared servers (who is up, who is busy), then, if auto smoke is on, the scheduler is not paused, it is not quiet hours and no run is queued, queue one quick run for the first candidate that may be measured now. After every finished run `detect_regressions` compares each model with its results before its last digest change and raises a notice (and `galton.regression`) when it is significantly worse.
+
+## Tools, API and MCP
+
+`agent_tools.TOOLS` is the single catalogue. `GET /api/agent/tools` and `POST /api/agent/call` serve it to assistants with the bearer token from `data/mcp-token`; results are capped. `POST /api/ui/call` serves the same handlers to the bundled UI uncapped (the app only listens on 127.0.0.1 and the guard rejects cross-site requests). `mcp_server.py` exposes the catalogue over stdio as `galton-hoard` and proxies to the running app. `docs/API.md` is generated by `scripts/gen_api_doc.py`; a test fails when it is out of date.
+
+## Client
+
+Hash routing (`#/`, `#/modelos`, `#/pruebas/<suite>`, `#/ejecutar/<run>`, `#/clasificacion`, `#/arena`, `#/rutas`, `#/ajustes`). Strings are in `client/src/i18n.js` as `[español, English]` pairs. Messages of the backend are a stable key plus parameters (`galton_hoard/messages.py`: `ERRORS` with hints, `TEXTS`, `NOTICES`; `GaltonError(code, key, **params)`, `text(key, **params)`, `store.add_notice(kind=..., params=...)`); the API keeps the English sentence (a `str` subclass that remembers its key), `/api/ui/call`, the dashboard and the run events turn it into `{key, params, text}` (`messages.wire`) and `client/src/msgs.js` formats it in either language. Runs store plain English text; reading it back recognises the catalogue's sentences (`messages.recognise`), so old rows show in Spanish too. A test checks that `msgs.js` covers the catalogue exactly. `usePoll` runs its first call at once, whatever the visibility of the tab. Colours come from the shared `hoard-theme.css` (vendored unchanged) selected by `data-hoard-app="galton"`, with a fallback accent in `index.css`. The dashboard polls every 4 seconds while a run is active and every minute otherwise; the run page follows `/api/runs/{id}/events`.
+
+## Demo mode
+
+`GALTON_FAKE=1` swaps in `FakeGpus` (an invented inventory and leases without a hub), a `FakeWorld` (models that answer from a table, a launcher that starts nothing) and three invented models (no results until you run something), and sends the routing table to `data/routes-demo.json`. The UI labels it as a demonstration. The tests use the same pieces.
+
+## Data
+
+Everything lives in `data/` (or `GALTON_DATA_DIR`): `galton.db`, `images/`, `cache/`, `logs/` (llama-server logs and the rotating `galton.log`; `startup.py` keeps start-up safe without a console), `servers.json`, `mcp-token`, `url`.
+
+## Shared servers, discarded runs and cancelling
+
+- **Identity.** A `server` contestant stands for (address, model). `models_refresh` compares it with what the address serves (`discovery._check_served`): a contestant whose address now serves another model gets `meta.not_served` (kept, with history, excluded from run forms and from `measure_new`, cleared when the server serves it again) and the new model gets its own contestant. A run uses `identity.IdentityGuard`; see `tests/test_server_identity.py` (a fake server that swaps models mid-run).
+- **Discarded runs.** `run_discard` (needs `confirm=true` and a reason) sets a flag on a finished run; `run_restore` clears it. Every statistic reads results through the SQL fragment `LIVE` (`store.scoring_rows`), so the leaderboard, compare, recommend, routes, arena and regression checks never see a discarded run. Discarding retracts the regression and improvement notices of that run; restoring re-checks regressions.
+- **Cancel.** The note of `run_cancel` depends on the contestants not yet finished: Galton's own llama-server (a GGUF file, ports 8091-8099) is stopped; a shared server is not touched and keeps running (`run_stopping_own`, `run_stopping_shared`, `run_stopping_both`). Nothing in cancel unloads, stops or kills a shared server (`tests/test_cancel.py`).

@@ -1,0 +1,1269 @@
+{
+ "id": "herramientas",
+ "name": "Uso de herramientas",
+ "description": "El modelo recibe herramientas en formato de funciones y debe llamar a la correcta con los argumentos exactos, o a ninguna.",
+ "category": "tool_use",
+ "version": 1,
+ "max_tokens": 500,
+ "position": 6,
+ "cases": [
+  {
+   "title": "Tiempo en una ciudad",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "¿Qué tiempo hace ahora mismo en Madrid?"
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": {
+     "name": "get_weather",
+     "arguments": {
+      "city": "Madrid"
+     }
+    }
+   },
+   "reference": "{\"name\": \"get_weather\", \"arguments\": {\"city\": \"Madrid\"}}",
+   "tags": [
+    "herramientas"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "get_weather",
+      "description": "Devuelve el tiempo actual en una ciudad.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "city": {
+         "type": "string",
+         "description": "Nombre de la ciudad"
+        },
+        "unit": {
+         "type": "string",
+         "description": "Unidad de temperatura",
+         "enum": [
+          "celsius",
+          "fahrenheit"
+         ]
+        }
+       },
+       "required": [
+        "city"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "get_time",
+      "description": "Devuelve la hora actual en una zona horaria IANA.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "timezone": {
+         "type": "string",
+         "description": "Zona horaria IANA, por ejemplo Europe/Madrid"
+        }
+       },
+       "required": [
+        "timezone"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Unidad de temperatura explícita",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "Dime la temperatura en Chicago en grados Fahrenheit."
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": {
+     "name": "get_weather",
+     "arguments": {
+      "city": "Chicago",
+      "unit": "fahrenheit"
+     }
+    }
+   },
+   "reference": "{\"name\": \"get_weather\", \"arguments\": {\"city\": \"Chicago\", \"unit\": \"fahrenheit\"}}",
+   "tags": [
+    "herramientas"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "get_weather",
+      "description": "Devuelve el tiempo actual en una ciudad.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "city": {
+         "type": "string",
+         "description": "Nombre de la ciudad"
+        },
+        "unit": {
+         "type": "string",
+         "description": "Unidad de temperatura",
+         "enum": [
+          "celsius",
+          "fahrenheit"
+         ]
+        }
+       },
+       "required": [
+        "city"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "get_time",
+      "description": "Devuelve la hora actual en una zona horaria IANA.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "timezone": {
+         "type": "string",
+         "description": "Zona horaria IANA, por ejemplo Europe/Madrid"
+        }
+       },
+       "required": [
+        "timezone"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Hora en otra zona",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "¿Qué hora es ahora en Tokio?"
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": {
+     "name": "get_time",
+     "arguments": {
+      "timezone": "Asia/Tokyo"
+     }
+    }
+   },
+   "reference": "{\"name\": \"get_time\", \"arguments\": {\"timezone\": \"Asia/Tokyo\"}}",
+   "tags": [
+    "herramientas"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "get_weather",
+      "description": "Devuelve el tiempo actual en una ciudad.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "city": {
+         "type": "string",
+         "description": "Nombre de la ciudad"
+        },
+        "unit": {
+         "type": "string",
+         "description": "Unidad de temperatura",
+         "enum": [
+          "celsius",
+          "fahrenheit"
+         ]
+        }
+       },
+       "required": [
+        "city"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "get_time",
+      "description": "Devuelve la hora actual en una zona horaria IANA.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "timezone": {
+         "type": "string",
+         "description": "Zona horaria IANA, por ejemplo Europe/Madrid"
+        }
+       },
+       "required": [
+        "timezone"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Crear evento con asistentes",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "Agenda una reunión llamada «Revisión de presupuesto» el 4 de noviembre de 2025 a las 10:30, de 45 minutos, con ana@example.org y pedro@example.org."
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": {
+     "name": "create_event",
+     "arguments": {
+      "title": "Revisión de presupuesto",
+      "date": "2025-11-04",
+      "time": "10:30",
+      "duration_min": 45,
+      "attendees": [
+       "ana@example.org",
+       "pedro@example.org"
+      ]
+     }
+    },
+    "rules": {
+     "attendees": "unordered"
+    }
+   },
+   "reference": "{\"name\": \"create_event\", \"arguments\": {\"title\": \"Revisión de presupuesto\", \"date\": \"2025-11-04\", \"time\": \"10:30\", \"duration_min\": 45, \"attendees\": [\"ana@example.org\", \"pedro@example.org\"]}}",
+   "tags": [
+    "herramientas",
+    "calendario"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "create_event",
+      "description": "Crea un evento en el calendario.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "title": {
+         "type": "string",
+         "description": "Título"
+        },
+        "date": {
+         "type": "string",
+         "description": "Fecha AAAA-MM-DD"
+        },
+        "time": {
+         "type": "string",
+         "description": "Hora HH:MM de 24 horas"
+        },
+        "duration_min": {
+         "type": "integer",
+         "description": "Duración en minutos"
+        },
+        "attendees": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         },
+         "description": "Correos de los asistentes"
+        }
+       },
+       "required": [
+        "title",
+        "date",
+        "time"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "list_events",
+      "description": "Lista los eventos de un día.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "date": {
+         "type": "string",
+         "description": "Fecha AAAA-MM-DD"
+        }
+       },
+       "required": [
+        "date"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "send_email",
+      "description": "Envía un correo electrónico.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "to": {
+         "type": "string",
+         "description": "Destinatario"
+        },
+        "subject": {
+         "type": "string",
+         "description": "Asunto"
+        },
+        "body": {
+         "type": "string",
+         "description": "Cuerpo del mensaje"
+        }
+       },
+       "required": [
+        "to",
+        "subject",
+        "body"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Consultar la agenda de un día",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "¿Qué tengo en el calendario el 12 de diciembre de 2025?"
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": {
+     "name": "list_events",
+     "arguments": {
+      "date": "2025-12-12"
+     }
+    }
+   },
+   "reference": "{\"name\": \"list_events\", \"arguments\": {\"date\": \"2025-12-12\"}}",
+   "tags": [
+    "herramientas",
+    "calendario"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "create_event",
+      "description": "Crea un evento en el calendario.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "title": {
+         "type": "string",
+         "description": "Título"
+        },
+        "date": {
+         "type": "string",
+         "description": "Fecha AAAA-MM-DD"
+        },
+        "time": {
+         "type": "string",
+         "description": "Hora HH:MM de 24 horas"
+        },
+        "duration_min": {
+         "type": "integer",
+         "description": "Duración en minutos"
+        },
+        "attendees": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         },
+         "description": "Correos de los asistentes"
+        }
+       },
+       "required": [
+        "title",
+        "date",
+        "time"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "list_events",
+      "description": "Lista los eventos de un día.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "date": {
+         "type": "string",
+         "description": "Fecha AAAA-MM-DD"
+        }
+       },
+       "required": [
+        "date"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Enviar un correo",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "Manda un correo a marta@example.org con el asunto «Factura de octubre» diciéndole que adjuntas la factura y que la pague antes del día 30."
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": {
+     "name": "send_email",
+     "arguments": {
+      "to": "marta@example.org",
+      "subject": "Factura de octubre",
+      "body": "factura"
+     }
+    },
+    "rules": {
+     "body": "contains"
+    }
+   },
+   "reference": "{\"name\": \"send_email\", \"arguments\": {\"to\": \"marta@example.org\", \"subject\": \"Factura de octubre\", \"body\": \"Te adjunto la factura; por favor, págala antes del día 30.\"}}",
+   "tags": [
+    "herramientas",
+    "correo"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "send_email",
+      "description": "Envía un correo electrónico.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "to": {
+         "type": "string",
+         "description": "Destinatario"
+        },
+        "subject": {
+         "type": "string",
+         "description": "Asunto"
+        },
+        "body": {
+         "type": "string",
+         "description": "Cuerpo del mensaje"
+        }
+       },
+       "required": [
+        "to",
+        "subject",
+        "body"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "search_email",
+      "description": "Busca correos en la bandeja de entrada.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "query": {
+         "type": "string",
+         "description": "Texto a buscar"
+        },
+        "limit": {
+         "type": "integer",
+         "description": "Máximo de resultados"
+        }
+       },
+       "required": [
+        "query"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Buscar correos con límite",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "Busca en mi bandeja los correos que mencionen «presupuesto» y enséñame solo los 5 últimos."
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": {
+     "name": "search_email",
+     "arguments": {
+      "query": "presupuesto",
+      "limit": 5
+     }
+    }
+   },
+   "reference": "{\"name\": \"search_email\", \"arguments\": {\"query\": \"presupuesto\", \"limit\": 5}}",
+   "tags": [
+    "herramientas",
+    "correo"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "send_email",
+      "description": "Envía un correo electrónico.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "to": {
+         "type": "string",
+         "description": "Destinatario"
+        },
+        "subject": {
+         "type": "string",
+         "description": "Asunto"
+        },
+        "body": {
+         "type": "string",
+         "description": "Cuerpo del mensaje"
+        }
+       },
+       "required": [
+        "to",
+        "subject",
+        "body"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "search_email",
+      "description": "Busca correos en la bandeja de entrada.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "query": {
+         "type": "string",
+         "description": "Texto a buscar"
+        },
+        "limit": {
+         "type": "integer",
+         "description": "Máximo de resultados"
+        }
+       },
+       "required": [
+        "query"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Leer un archivo",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "Abre el archivo /home/usuario/notas/ideas.txt y léemelo."
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": {
+     "name": "read_file",
+     "arguments": {
+      "path": "/home/usuario/notas/ideas.txt"
+     }
+    }
+   },
+   "reference": "{\"name\": \"read_file\", \"arguments\": {\"path\": \"/home/usuario/notas/ideas.txt\"}}",
+   "tags": [
+    "herramientas",
+    "archivos"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "read_file",
+      "description": "Lee un archivo de texto.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string",
+         "description": "Ruta del archivo"
+        }
+       },
+       "required": [
+        "path"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "write_file",
+      "description": "Escribe un archivo de texto, sobrescribiéndolo.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string",
+         "description": "Ruta del archivo"
+        },
+        "content": {
+         "type": "string",
+         "description": "Contenido"
+        }
+       },
+       "required": [
+        "path",
+        "content"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "list_dir",
+      "description": "Lista el contenido de una carpeta.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string",
+         "description": "Ruta de la carpeta"
+        }
+       },
+       "required": [
+        "path"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Escribir un archivo",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "Crea el archivo tareas.md con el contenido «- Comprar pan» (solo esa línea)."
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": {
+     "name": "write_file",
+     "arguments": {
+      "path": "tareas.md",
+      "content": "- Comprar pan"
+     }
+    },
+    "rules": {
+     "content": "contains"
+    }
+   },
+   "reference": "{\"name\": \"write_file\", \"arguments\": {\"path\": \"tareas.md\", \"content\": \"- Comprar pan\"}}",
+   "tags": [
+    "herramientas",
+    "archivos"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "read_file",
+      "description": "Lee un archivo de texto.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string",
+         "description": "Ruta del archivo"
+        }
+       },
+       "required": [
+        "path"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "write_file",
+      "description": "Escribe un archivo de texto, sobrescribiéndolo.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string",
+         "description": "Ruta del archivo"
+        },
+        "content": {
+         "type": "string",
+         "description": "Contenido"
+        }
+       },
+       "required": [
+        "path",
+        "content"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "list_dir",
+      "description": "Lista el contenido de una carpeta.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string",
+         "description": "Ruta de la carpeta"
+        }
+       },
+       "required": [
+        "path"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Listar una carpeta entre tres herramientas de archivos",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "¿Qué archivos hay en la carpeta C:\\Proyectos\\Informes?"
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": {
+     "name": "list_dir",
+     "arguments": {
+      "path": "C:\\Proyectos\\Informes"
+     }
+    }
+   },
+   "reference": "{\"name\": \"list_dir\", \"arguments\": {\"path\": \"C:\\\\Proyectos\\\\Informes\"}}",
+   "tags": [
+    "herramientas",
+    "archivos"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "read_file",
+      "description": "Lee un archivo de texto.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string",
+         "description": "Ruta del archivo"
+        }
+       },
+       "required": [
+        "path"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "write_file",
+      "description": "Escribe un archivo de texto, sobrescribiéndolo.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string",
+         "description": "Ruta del archivo"
+        },
+        "content": {
+         "type": "string",
+         "description": "Contenido"
+        }
+       },
+       "required": [
+        "path",
+        "content"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "list_dir",
+      "description": "Lista el contenido de una carpeta.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string",
+         "description": "Ruta de la carpeta"
+        }
+       },
+       "required": [
+        "path"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Usar la calculadora",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "Usa la calculadora para saber cuánto es el 17,5 % de 2340."
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": {
+     "name": "calculate",
+     "arguments": {
+      "expression": "any"
+     }
+    },
+    "rules": {
+     "expression": "any"
+    }
+   },
+   "reference": "{\"name\": \"calculate\", \"arguments\": {\"expression\": \"2340 * 0.175\"}}",
+   "tags": [
+    "herramientas",
+    "cálculo"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "calculate",
+      "description": "Evalúa una expresión aritmética.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "expression": {
+         "type": "string",
+         "description": "Expresión, por ejemplo 2*(3+4)"
+        }
+       },
+       "required": [
+        "expression"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "web_search",
+      "description": "Busca en la web.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "query": {
+         "type": "string",
+         "description": "Consulta"
+        },
+        "max_results": {
+         "type": "integer",
+         "description": "Número máximo de resultados"
+        }
+       },
+       "required": [
+        "query"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Dos llamadas en paralelo",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "Dime el tiempo en Sevilla y en Bilbao."
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": [
+     {
+      "name": "get_weather",
+      "arguments": {
+       "city": "Sevilla"
+      }
+     },
+     {
+      "name": "get_weather",
+      "arguments": {
+       "city": "Bilbao"
+      }
+     }
+    ]
+   },
+   "reference": "[{\"name\": \"get_weather\", \"arguments\": {\"city\": \"Sevilla\"}}, {\"name\": \"get_weather\", \"arguments\": {\"city\": \"Bilbao\"}}]",
+   "tags": [
+    "herramientas",
+    "paralelo"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "get_weather",
+      "description": "Devuelve el tiempo actual en una ciudad.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "city": {
+         "type": "string",
+         "description": "Nombre de la ciudad"
+        },
+        "unit": {
+         "type": "string",
+         "description": "Unidad de temperatura",
+         "enum": [
+          "celsius",
+          "fahrenheit"
+         ]
+        }
+       },
+       "required": [
+        "city"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "get_time",
+      "description": "Devuelve la hora actual en una zona horaria IANA.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "timezone": {
+         "type": "string",
+         "description": "Zona horaria IANA, por ejemplo Europe/Madrid"
+        }
+       },
+       "required": [
+        "timezone"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Dos herramientas distintas a la vez",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "Lee el archivo notas.txt y dime también qué hora es en Londres."
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": [
+     {
+      "name": "read_file",
+      "arguments": {
+       "path": "notas.txt"
+      }
+     },
+     {
+      "name": "get_time",
+      "arguments": {
+       "timezone": "Europe/London"
+      }
+     }
+    ]
+   },
+   "reference": "[{\"name\": \"read_file\", \"arguments\": {\"path\": \"notas.txt\"}}, {\"name\": \"get_time\", \"arguments\": {\"timezone\": \"Europe/London\"}}]",
+   "tags": [
+    "herramientas",
+    "paralelo"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "read_file",
+      "description": "Lee un archivo de texto.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "path": {
+         "type": "string",
+         "description": "Ruta del archivo"
+        }
+       },
+       "required": [
+        "path"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "get_time",
+      "description": "Devuelve la hora actual en una zona horaria IANA.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "timezone": {
+         "type": "string",
+         "description": "Zona horaria IANA, por ejemplo Europe/Madrid"
+        }
+       },
+       "required": [
+        "timezone"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "get_weather",
+      "description": "Devuelve el tiempo actual en una ciudad.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "city": {
+         "type": "string",
+         "description": "Nombre de la ciudad"
+        },
+        "unit": {
+         "type": "string",
+         "description": "Unidad de temperatura",
+         "enum": [
+          "celsius",
+          "fahrenheit"
+         ]
+        }
+       },
+       "required": [
+        "city"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "No llamar a una herramienta cuando no hace falta",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "¿Cuál es la capital de Francia?"
+   },
+   "checker": {
+    "type": "tool_call",
+    "none": true
+   },
+   "reference": "La capital de Francia es París.",
+   "tags": [
+    "herramientas",
+    "sin herramienta"
+   ],
+   "max_tokens": 300,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "get_weather",
+      "description": "Devuelve el tiempo actual en una ciudad.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "city": {
+         "type": "string",
+         "description": "Nombre de la ciudad"
+        },
+        "unit": {
+         "type": "string",
+         "description": "Unidad de temperatura",
+         "enum": [
+          "celsius",
+          "fahrenheit"
+         ]
+        }
+       },
+       "required": [
+        "city"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "web_search",
+      "description": "Busca en la web.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "query": {
+         "type": "string",
+         "description": "Consulta"
+        },
+        "max_results": {
+         "type": "integer",
+         "description": "Número máximo de resultados"
+        }
+       },
+       "required": [
+        "query"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "calculate",
+      "description": "Evalúa una expresión aritmética.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "expression": {
+         "type": "string",
+         "description": "Expresión, por ejemplo 2*(3+4)"
+        }
+       },
+       "required": [
+        "expression"
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "Elegir la herramienta de tienda",
+   "prompt": {
+    "system": "Eres un asistente con acceso a herramientas. Si la petición se puede resolver llamando a una herramienta, llámala con los argumentos exactos; si no hace falta ninguna, responde directamente en castellano.",
+    "text": "Quiero saber si queda stock del producto SKU-4471 y, si hay, añade 3 unidades al carrito."
+   },
+   "checker": {
+    "type": "tool_call",
+    "expected": [
+     {
+      "name": "check_stock",
+      "arguments": {
+       "product_id": "SKU-4471"
+      }
+     }
+    ],
+    "allow_extra_calls": true
+   },
+   "reference": "{\"name\": \"check_stock\", \"arguments\": {\"product_id\": \"SKU-4471\"}}",
+   "tags": [
+    "herramientas",
+    "encadenado"
+   ],
+   "max_tokens": 400,
+   "tools": [
+    {
+     "type": "function",
+     "function": {
+      "name": "check_stock",
+      "description": "Consulta las unidades disponibles de un producto.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "product_id": {
+         "type": "string",
+         "description": "Identificador del producto"
+        }
+       },
+       "required": [
+        "product_id"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "add_to_cart",
+      "description": "Añade un producto al carrito.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "product_id": {
+         "type": "string",
+         "description": "Identificador del producto"
+        },
+        "quantity": {
+         "type": "integer",
+         "description": "Unidades"
+        }
+       },
+       "required": [
+        "product_id",
+        "quantity"
+       ]
+      }
+     }
+    },
+    {
+     "type": "function",
+     "function": {
+      "name": "web_search",
+      "description": "Busca en la web.",
+      "parameters": {
+       "type": "object",
+       "properties": {
+        "query": {
+         "type": "string",
+         "description": "Consulta"
+        },
+        "max_results": {
+         "type": "integer",
+         "description": "Número máximo de resultados"
+        }
+       },
+       "required": [
+        "query"
+       ]
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

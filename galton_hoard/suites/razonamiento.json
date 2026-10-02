@@ -1,0 +1,344 @@
+{
+ "id": "razonamiento",
+ "name": "Razonamiento",
+ "description": "Acertijos de lógica, aritmética de fechas y problemas con una respuesta comprobable.",
+ "category": "reasoning",
+ "version": 2,
+ "max_tokens": 1500,
+ "position": 2,
+ "cases": [
+  {
+   "title": "Hora de llegada de un tren",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Un tren sale de Zaragoza a las 9:40 y el trayecto dura 2 horas y 50 minutos. ¿A qué hora llega? Responde en formato HH:MM de 24 horas.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "regex",
+    "pattern": "(?<!\\d)12:30(?!\\d)"
+   },
+   "reference": "Respuesta: 12:30",
+   "tags": [
+    "horas"
+   ]
+  },
+  {
+   "title": "Sumar 100 días a una fecha",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "¿Qué fecha será 100 días después del 15 de marzo de 2025? Responde en formato DD/MM/AAAA.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "regex",
+    "pattern": "(?<!\\d)23/06/2025(?!\\d)"
+   },
+   "reference": "Respuesta: 23/06/2025",
+   "tags": [
+    "fechas"
+   ]
+  },
+  {
+   "title": "Día de la semana de una fecha futura",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Sabiendo que el 1 de enero de 2025 fue miércoles, ¿qué día de la semana será el 1 de enero de 2030? (Recuerda los años bisiestos.)\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "contains",
+    "all": [
+     "martes"
+    ],
+    "none": [
+     "lunes",
+     "miércoles",
+     "jueves",
+     "viernes",
+     "sábado",
+     "domingo"
+    ],
+    "words": true,
+    "ignore_accents": true,
+    "scope": "answer"
+   },
+   "reference": "Respuesta: martes",
+   "tags": [
+    "fechas"
+   ]
+  },
+  {
+   "title": "Edades con doble y diferencia",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Marta tiene el doble de edad que su hermano Iván. Dentro de 6 años, la suma de sus edades será 45. ¿Cuántos años tiene Marta ahora?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 22
+   },
+   "reference": "Marta tiene 22 años (Iván 11; dentro de 6 años 28 + 17 = 45).\nRespuesta: 22",
+   "tags": [
+    "álgebra"
+   ]
+  },
+  {
+   "title": "Pintores y habitaciones",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Tres pintores tardan 3 horas en pintar 3 habitaciones, todos trabajando al mismo ritmo. ¿Cuántas horas tardarían 9 pintores en pintar 9 habitaciones?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 3
+   },
+   "reference": "Respuesta: 3",
+   "tags": [
+    "proporcionalidad"
+   ]
+  },
+  {
+   "title": "Silogismo con cuantificadores",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Premisas: (1) Todos los gatos son mamíferos. (2) Algunos mamíferos son domésticos. (3) Ningún reptil es mamífero.\n\n¿Cuál de las conclusiones se deduce con certeza?\nA) Algunos gatos son domésticos.\nB) Ningún gato es reptil.\nC) Todos los mamíferos son gatos.\nD) Algunos reptiles son domésticos.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "choice",
+    "answer": "B"
+   },
+   "reference": "Respuesta: B",
+   "tags": [
+    "lógica"
+   ]
+  },
+  {
+   "title": "Caballeros y bribones",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "En una isla, los caballeros siempre dicen la verdad y los bribones siempre mienten. Tres habitantes hablan:\n- A dice: «B es un bribón».\n- B dice: «A y C somos de la misma clase».\n- C dice: «A es un bribón».\n\n¿Quiénes son caballeros? Responde con las letras juntas, en orden alfabético (por ejemplo, AB), o con «ninguno».\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "regex",
+    "pattern": "respuesta\\W*A\\W*$",
+    "flags": "im"
+   },
+   "reference": "Respuesta: A",
+   "tags": [
+    "lógica",
+    "acertijos"
+   ]
+  },
+  {
+   "title": "Cinco amigos en una fila",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Cinco amigos (Ana, Beto, Carla, Diego y Elena) se sientan en cinco sillas numeradas del 1 al 5 de izquierda a derecha. Se sabe que:\n- Ana está en uno de los dos extremos.\n- Beto está justo a la derecha de Carla (en la silla siguiente).\n- Diego no está sentado al lado de Ana.\n- Elena está más a la izquierda que Carla.\n- Diego no está en ninguno de los extremos.\n- Beto no está sentado al lado de Ana.\n\n¿Quién ocupa la silla 3?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "contains",
+    "all": [
+     "Diego"
+    ],
+    "none": [
+     "Ana",
+     "Beto",
+     "Carla",
+     "Elena"
+    ],
+    "words": true,
+    "scope": "answer"
+   },
+   "reference": "Respuesta: Diego",
+   "tags": [
+    "lógica",
+    "ordenación"
+   ]
+  },
+  {
+   "title": "Dos descuentos sucesivos",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Un abrigo cuesta 150 €. Se le aplica primero un 20 % de descuento y, sobre el precio resultante, otro 10 %. ¿Cuántos euros cuesta al final?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 108
+   },
+   "reference": "150 · 0,8 = 120; 120 · 0,9 = 108.\nRespuesta: 108",
+   "tags": [
+    "porcentajes"
+   ]
+  },
+  {
+   "title": "Velocidad media de ida y vuelta",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Un ciclista va de A a B a 60 km/h y vuelve de B a A por el mismo camino a 40 km/h. ¿Cuál es su velocidad media en todo el trayecto, en km/h?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 48
+   },
+   "reference": "Respuesta: 48",
+   "tags": [
+    "velocidad"
+   ]
+  },
+  {
+   "title": "Apretones de manos",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "En una reunión hay 12 personas y cada una saluda con un apretón de manos a todas las demás exactamente una vez. ¿Cuántos apretones de manos se dan en total?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 66
+   },
+   "reference": "Respuesta: 66",
+   "tags": [
+    "combinatoria"
+   ]
+  },
+  {
+   "title": "Siguiente término de una sucesión",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Completa la sucesión: 2, 6, 12, 20, 30, ?  ¿Qué número va en la interrogación?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 42
+   },
+   "reference": "Los términos son n·(n+1).\nRespuesta: 42",
+   "tags": [
+    "patrones"
+   ]
+  },
+  {
+   "title": "Ángulo entre las agujas",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "¿Qué ángulo, en grados, forman las agujas de un reloj analógico a las 3:40? Da el ángulo menor, el que es 180° o menos.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 130
+   },
+   "reference": "Horaria: 3·30 + 40·0,5 = 110°; minutero: 40·6 = 240°. Diferencia 130°.\nRespuesta: 130",
+   "tags": [
+    "geometría"
+   ]
+  },
+  {
+   "title": "Libro y marcapáginas",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Un libro y un marcapáginas cuestan en total 1,10 €. El libro cuesta 1 € más que el marcapáginas. ¿Cuántos euros cuesta el marcapáginas?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 0.05,
+    "tolerance": {
+     "abs": 0.001
+    }
+   },
+   "reference": "Respuesta: 0,05",
+   "tags": [
+    "álgebra"
+   ]
+  },
+  {
+   "title": "Nenúfares en un estanque",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Una colonia de nenúfares dobla su superficie cada día. Tarda 48 días en cubrir todo el estanque. ¿Cuántos días tardó en cubrir la mitad del estanque?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 47
+   },
+   "reference": "Respuesta: 47",
+   "tags": [
+    "exponencial"
+   ]
+  },
+  {
+   "title": "Contar letras en una palabra",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "¿Cuántas veces aparece la letra «r» en la palabra «ferrocarril»?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 4
+   },
+   "reference": "f-e-r-r-o-c-a-r-r-i-l.\nRespuesta: 4",
+   "tags": [
+    "letras"
+   ]
+  },
+  {
+   "title": "Domingos de un mes",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "El 1 de marzo de 2026 es domingo. ¿Cuántos domingos tiene ese mes de marzo (que tiene 31 días)?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 5
+   },
+   "reference": "Respuesta: 5",
+   "tags": [
+    "fechas"
+   ]
+  },
+  {
+   "title": "Mezcla de dos disoluciones",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Se mezclan 2 litros de una disolución al 10 % de sal con 3 litros de otra al 20 %. ¿Qué porcentaje de sal tiene la mezcla resultante?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 16,
+    "tolerance": {
+     "abs": 0.01
+    }
+   },
+   "reference": "Sal: 0,2 + 0,6 = 0,8 litros en 5 litros: 16 %.\nRespuesta: 16",
+   "tags": [
+    "porcentajes"
+   ]
+  },
+  {
+   "title": "Moneda falsa con una balanza",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Hay 9 monedas de aspecto idéntico y una es más pesada que las demás. Con una balanza de dos platos (sin pesas), ¿cuál es el número mínimo de pesadas que garantiza encontrar la moneda pesada?\nA) 1\nB) 2\nC) 3\nD) 4\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "choice",
+    "answer": "B"
+   },
+   "reference": "Se dividen en tres grupos de tres: dos pesadas.\nRespuesta: B",
+   "tags": [
+    "lógica",
+    "acertijos"
+   ]
+  },
+  {
+   "title": "Pasos de un caracol",
+   "prompt": {
+    "system": "Razona con cuidado, paso a paso, pero termina siempre con una última línea «Respuesta: …» que contenga solo la respuesta final.",
+    "text": "Un caracol sube por una pared de 10 metros. Cada día sube 3 metros, y cada noche resbala 2 metros. ¿Qué día llega a la cima?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 8
+   },
+   "reference": "Tras 7 días lleva 7 m; el día 8 sube 3 m más y llega a 10 m sin resbalar.\nRespuesta: 8",
+   "tags": [
+    "acertijos"
+   ]
+  }
+ ]
+}

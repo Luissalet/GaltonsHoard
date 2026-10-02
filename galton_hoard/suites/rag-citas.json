@@ -1,0 +1,581 @@
+{
+ "id": "rag-citas",
+ "name": "RAG con citas",
+ "description": "Preguntas sobre pasajes numerados: el modelo debe dar el dato correcto y citar los pasajes que lo sostienen.",
+ "category": "rag",
+ "version": 1,
+ "max_tokens": 400,
+ "position": 8,
+ "cases": [
+  {
+   "title": "Fecha de inauguración",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] La estación de Villaverde Alto se abrió al público en 1912 como parada del ferrocarril minero.\n\n[p2] En 1974 el edificio principal fue declarado bien de interés local.\n\n[p3] El museo del ferrocarril ocupa desde 2003 las antiguas cocheras de la estación.\n\n[p4] El horario del museo es de martes a domingo, de 10:00 a 14:00.\n\n[p5] La biblioteca municipal está en la plaza de la Constitución.\n\nPregunta: ¿En qué año se abrió la estación de Villaverde Alto?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p1"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "all": [
+       "1912"
+      ]
+     }
+    ]
+   },
+   "reference": "La estación se abrió al público en 1912 [p1].",
+   "tags": [
+    "rag"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Dos pasajes necesarios",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] La cooperativa Valle Claro produce 180.000 litros de aceite al año.\n\n[p2] El 40 % de su producción se exporta a Alemania y Francia.\n\n[p3] La cooperativa fue fundada en 1967 por doce familias.\n\n[p4] Su almazara se renovó por completo en 2019.\n\n[p5] Los olivos de la zona son de la variedad cornicabra.\n\nPregunta: ¿Cuántos litros de aceite exporta aproximadamente la cooperativa Valle Claro?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p1",
+       "p2"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "any": [
+       "72.000",
+       "72000"
+      ]
+     }
+    ]
+   },
+   "reference": "Exporta unos 72.000 litros, el 40 % de los 180.000 que produce [p1][p2].",
+   "tags": [
+    "rag",
+    "multi-salto"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Persona responsable",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] El proyecto Alba recibió una subvención de 90.000 euros.\n\n[p2] La directora técnica de Alba es la ingeniera Marta Quirós.\n\n[p3] El equipo de Alba lo forman seis personas.\n\n[p4] La subvención procede del fondo regional de innovación.\n\n[p5] El proyecto concluirá en junio de 2027.\n\nPregunta: ¿Quién dirige técnicamente el proyecto Alba?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p2"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "all": [
+       "Marta Quirós"
+      ]
+     }
+    ]
+   },
+   "reference": "La dirige la ingeniera Marta Quirós [p2].",
+   "tags": [
+    "rag"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Distractor con cifras parecidas",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] El puente viejo mide 84 metros de largo y se construyó en el siglo XVI.\n\n[p2] El puente nuevo, inaugurado en 1998, mide 212 metros de largo.\n\n[p3] El puente viejo cerró al tráfico de coches en 1999.\n\n[p4] Cada año cruzan el puente nuevo unos 9.000 vehículos diarios.\n\n[p5] Una pasarela peatonal de 60 metros conecta ambas orillas más al sur.\n\nPregunta: ¿Cuánto mide el puente nuevo?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p2"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "all": [
+       "212"
+      ]
+     }
+    ]
+   },
+   "reference": "El puente nuevo mide 212 metros [p2].",
+   "tags": [
+    "rag",
+    "distractor"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Condición y excepción",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] Las reservas de la sala de estudio se hacen desde la aplicación del centro, con hasta 48 horas de antelación.\n\n[p2] Cada alumno puede reservar un máximo de dos horas al día.\n\n[p3] En periodo de exámenes, el máximo pasa a ser de cuatro horas diarias.\n\n[p4] La sala cierra a las 21:00 los días laborables.\n\n[p5] Está prohibido consumir comida en la sala.\n\nPregunta: ¿Cuántas horas al día puede reservar un alumno en periodo de exámenes?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p3"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "any": [
+       "cuatro",
+       "4 horas",
+       "4h"
+      ]
+     }
+    ]
+   },
+   "reference": "En periodo de exámenes puede reservar hasta cuatro horas al día [p3].",
+   "tags": [
+    "rag",
+    "condición"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Ciudad de la sede",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] Tecnoval abrió su primera fábrica en Ponferrada en 1989.\n\n[p2] Hoy su sede central se encuentra en Burgos, junto al polígono de Villalonquéjar.\n\n[p3] La plantilla total ronda las 410 personas.\n\n[p4] La empresa fabrica componentes para ascensores.\n\n[p5] En 2022 facturó 38 millones de euros.\n\nPregunta: ¿Dónde está la sede central de Tecnoval?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p2"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "all": [
+       "Burgos"
+      ]
+     }
+    ]
+   },
+   "reference": "La sede central está en Burgos [p2].",
+   "tags": [
+    "rag"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Respuesta que combina dos datos",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] El tren regional sale de Soria a las 07:15 entre semana.\n\n[p2] El trayecto hasta Madrid dura 2 horas y 40 minutos.\n\n[p3] Los domingos solo hay un tren, a las 17:30.\n\n[p4] El billete sencillo cuesta 19,60 euros.\n\n[p5] Los menores de 14 años viajan gratis acompañados.\n\nPregunta: Si cojo el tren de las 07:15 un lunes en Soria, ¿a qué hora llego a Madrid?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p1",
+       "p2"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "any": [
+       "9:55",
+       "09:55",
+       "9.55",
+       "nueve y cincuenta y cinco",
+       "10:00"
+      ]
+     }
+    ]
+   },
+   "reference": "Llegarías a las 9:55 [p1][p2].",
+   "tags": [
+    "rag",
+    "multi-salto"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Dato negativo",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] El club de lectura se reúne el segundo miércoles de cada mes a las 19:00.\n\n[p2] La inscripción es gratuita para socios de la biblioteca.\n\n[p3] El libro de noviembre es una novela de Delibes.\n\n[p4] Las reuniones se celebran en la sala 2.\n\n[p5] Los asistentes pueden traer a un invitado.\n\nPregunta: ¿Cuánto cuesta inscribirse al club de lectura si eres socio de la biblioteca?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p2"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "any": [
+       "gratuita",
+       "gratis",
+       "nada",
+       "no cuesta",
+       "0 €",
+       "sin coste"
+      ]
+     }
+    ]
+   },
+   "reference": "Es gratuita para los socios [p2].",
+   "tags": [
+    "rag",
+    "negación"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Un pasaje entre cinco muy parecidos",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] La sucursal de Salamanca abre de 9:00 a 14:00 y de 17:00 a 20:00.\n\n[p2] La sucursal de Zamora abre de 9:00 a 14:00 de lunes a viernes.\n\n[p3] La sucursal de León abre de 8:30 a 15:00 sin pausa para comer.\n\n[p4] La sucursal de Ávila abre de 10:00 a 13:30 y los sábados de 10:00 a 12:00.\n\n[p5] La sucursal de Segovia abre de 9:30 a 13:30 y de 16:30 a 19:30.\n\nPregunta: ¿A qué hora abre la sucursal de León?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p3"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "any": [
+       "8:30",
+       "8.30",
+       "08:30"
+      ]
+     }
+    ]
+   },
+   "reference": "La sucursal de León abre a las 8:30 [p3].",
+   "tags": [
+    "rag",
+    "distractor"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Quién descubrió qué",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] El yacimiento de La Olmeda fue descubierto en 1968 por un agricultor al arar un campo.\n\n[p2] Las excavaciones oficiales las dirigió el arqueólogo Pedro de Palol.\n\n[p3] El mosaico principal mide unos 300 metros cuadrados.\n\n[p4] El museo actual se inauguró en 2009.\n\n[p5] El yacimiento corresponde a una villa romana del siglo IV.\n\nPregunta: ¿En qué siglo se sitúa la villa romana del yacimiento de La Olmeda?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p5"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "all": [
+       "siglo IV",
+       "IV"
+      ]
+     }
+    ]
+   },
+   "reference": "Corresponde al siglo IV [p5].",
+   "tags": [
+    "rag"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Respuesta con dos citas que se complementan",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] La beca Horizonte cubre la matrícula completa del primer curso.\n\n[p2] Para solicitarla hay que tener una nota media mínima de 7,5.\n\n[p3] El plazo de solicitud termina el 30 de septiembre.\n\n[p4] La beca no es compatible con otras ayudas de matrícula.\n\n[p5] Los resultados se publican en octubre.\n\nPregunta: ¿Qué requisito de nota y hasta cuándo se puede solicitar la beca Horizonte?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p2",
+       "p3"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "all": [
+       "7,5",
+       "30 de septiembre"
+      ]
+     }
+    ]
+   },
+   "reference": "Hace falta una media de 7,5 [p2] y se puede solicitar hasta el 30 de septiembre [p3].",
+   "tags": [
+    "rag",
+    "multi-salto"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Pregunta sin respuesta en los pasajes",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] El mercadillo de la plaza Mayor se celebra los sábados por la mañana.\n\n[p2] Hay unos 60 puestos, la mayoría de ropa y artesanía.\n\n[p3] El ayuntamiento cobra una tasa a cada puesto.\n\n[p4] El mercadillo existe desde 1985.\n\n[p5] Está prohibido aparcar en la plaza durante el mercadillo.\n\nPregunta: ¿Cuál es el nombre del alcalde que creó el mercadillo?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "contains",
+    "any": [
+     "no se indica",
+     "no indica",
+     "no indican",
+     "no aparece",
+     "no se menciona",
+     "no consta",
+     "no hay información",
+     "no dispongo",
+     "no se dice",
+     "no se especifica",
+     "no proporcionan",
+     "no se proporciona",
+     "no figura",
+     "no incluyen",
+     "no incluye",
+     "no se ofrece",
+     "no se puede"
+    ]
+   },
+   "reference": "Los pasajes no indican quién fue el alcalde que lo creó.",
+   "tags": [
+    "rag",
+    "sin respuesta"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Unidad de medida",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] El embalse de Riaño tiene una capacidad de 664 hectómetros cúbicos.\n\n[p2] El embalse de Barrios de Luna almacena hasta 308 hectómetros cúbicos.\n\n[p3] El pantano de Villameca, mucho más pequeño, solo almacena 20 hectómetros cúbicos.\n\n[p4] El nivel medio de los tres embalses ronda el 62 % este mes.\n\n[p5] La confederación publica los datos cada lunes.\n\nPregunta: ¿Qué capacidad tiene el embalse de Barrios de Luna?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p2"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "all": [
+       "308"
+      ]
+     }
+    ]
+   },
+   "reference": "Almacena hasta 308 hectómetros cúbicos [p2].",
+   "tags": [
+    "rag",
+    "distractor"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Comparar dos pasajes",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] El modelo Alfa tiene una batería de 4.000 mAh y pesa 180 gramos.\n\n[p2] El modelo Beta tiene una batería de 5.000 mAh y pesa 210 gramos.\n\n[p3] Ambos modelos incluyen cargador rápido de 30 W.\n\n[p4] El modelo Alfa cuesta 299 euros y el Beta, 349 euros.\n\n[p5] La garantía de los dos es de tres años.\n\nPregunta: ¿Cuál de los dos modelos tiene más batería y cuánto pesa?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p2"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "all": [
+       "Beta",
+       "210"
+      ]
+     }
+    ]
+   },
+   "reference": "El Beta, con 5.000 mAh, y pesa 210 gramos [p2].",
+   "tags": [
+    "rag",
+    "comparación"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Procedimiento con pasos",
+   "prompt": {
+    "system": "Respondes preguntas usando únicamente los pasajes numerados que se te dan. Cita los pasajes que sostienen tu respuesta con su identificador entre corchetes, por ejemplo [p2]. Si los pasajes no contienen la respuesta, dilo.",
+    "text": "Pasajes:\n\n[p1] Para solicitar el certificado hay que pedir cita previa en la sede electrónica.\n\n[p2] El día de la cita se presenta el DNI original y una fotocopia.\n\n[p3] El certificado se entrega en un plazo de cinco días hábiles.\n\n[p4] La tasa es de 3,80 euros y se paga en el momento de la cita.\n\n[p5] Los menores deben ir acompañados de un adulto.\n\nPregunta: ¿En cuántos días se entrega el certificado una vez solicitado?\n\nResponde en una o dos frases y cita los pasajes que uses."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "citations",
+      "correct": [
+       "p3"
+      ],
+      "ids": [
+       "p1",
+       "p2",
+       "p3",
+       "p4",
+       "p5"
+      ]
+     },
+     {
+      "type": "contains",
+      "any": [
+       "cinco",
+       "5 días",
+       "5 días hábiles"
+      ]
+     }
+    ]
+   },
+   "reference": "Se entrega en cinco días hábiles [p3].",
+   "tags": [
+    "rag"
+   ],
+   "max_tokens": 300
+  }
+ ]
+}

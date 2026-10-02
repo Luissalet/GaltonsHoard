@@ -1,0 +1,13 @@
+# Versions verified in the build environment (Python 3.11 and 3.13).
+fastapi==0.142.2
+uvicorn==0.46.0
+pydantic==2.13.3
+starlette==1.0.0
+httpx==0.28.1
+mcp==1.27.0
+tzdata==2025.2
+pillow==12.2.0
+# Exact symbolic comparison for the maths checker. Optional: without it the checker falls back to numeric comparison.
+sympy==1.14.0
+pytest==9.1.1
+pytest-asyncio==1.4.0

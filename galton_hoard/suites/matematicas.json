@@ -1,0 +1,318 @@
+{
+ "id": "matematicas",
+ "name": "Matemáticas",
+ "description": "Álgebra, cálculo y probabilidad con resultado exacto comprobable (sympy si está instalado).",
+ "category": "math",
+ "version": 1,
+ "max_tokens": 2000,
+ "position": 3,
+ "cases": [
+  {
+   "title": "Ecuación lineal",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Resuelve la ecuación 3x − 7 = 11 y da el valor de x.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "6"
+   },
+   "reference": "3x = 18, x = 6.\nRespuesta: x = 6",
+   "tags": [
+    "álgebra"
+   ]
+  },
+  {
+   "title": "Ecuación de segundo grado",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Resuelve x² − 5x + 6 = 0. Da las dos soluciones separadas por comas.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": [
+     "2",
+     "3"
+    ],
+    "mode": "set"
+   },
+   "reference": "Respuesta: x = 2, x = 3",
+   "tags": [
+    "álgebra"
+   ]
+  },
+  {
+   "title": "Derivada de un producto",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Calcula la derivada respecto de x de f(x) = x³ · ln(x).\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "3*x**2*log(x) + x**2"
+   },
+   "reference": "Respuesta: 3x² ln(x) + x²",
+   "tags": [
+    "cálculo"
+   ]
+  },
+  {
+   "title": "Integral definida de un seno",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Calcula la integral definida de sen(x) entre 0 y π.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "2"
+   },
+   "reference": "Respuesta: 2",
+   "tags": [
+    "cálculo"
+   ]
+  },
+  {
+   "title": "Límite que se resuelve factorizando",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Calcula el límite de (x² − 1)/(x − 1) cuando x tiende a 1.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "2"
+   },
+   "reference": "Respuesta: 2",
+   "tags": [
+    "cálculo"
+   ]
+  },
+  {
+   "title": "Límite con el número e",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Calcula el límite de (1 + 3/n)^n cuando n tiende a infinito.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "exp(3)"
+   },
+   "reference": "Respuesta: e³",
+   "tags": [
+    "cálculo"
+   ]
+  },
+  {
+   "title": "Probabilidad con dos dados",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Se lanzan dos dados equilibrados de seis caras. ¿Cuál es la probabilidad de que la suma sea 8? Da la fracción irreducible.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "5/36"
+   },
+   "reference": "Hay 5 casos favorables de 36.\nRespuesta: 5/36",
+   "tags": [
+    "probabilidad"
+   ]
+  },
+  {
+   "title": "Combinaciones",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "¿De cuántas formas se pueden elegir 3 alumnos de un grupo de 10 si el orden no importa?\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 120
+   },
+   "reference": "Respuesta: 120",
+   "tags": [
+    "combinatoria"
+   ]
+  },
+  {
+   "title": "Suma de una serie aritmética",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Calcula la suma de todos los números enteros del 1 al 100.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 5050
+   },
+   "reference": "Respuesta: 5050",
+   "tags": [
+    "series"
+   ]
+  },
+  {
+   "title": "Producto de las soluciones de un sistema",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Resuelve el sistema x + y = 10, x − y = 2 y calcula el producto x · y.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 24
+   },
+   "reference": "x = 6, y = 4.\nRespuesta: 24",
+   "tags": [
+    "álgebra"
+   ]
+  },
+  {
+   "title": "Integral con sustitución",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Calcula la integral definida de 2x·e^(x²) entre 0 y 1.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "e - 1"
+   },
+   "reference": "Con u = x²: e − 1.\nRespuesta: e − 1",
+   "tags": [
+    "cálculo"
+   ]
+  },
+  {
+   "title": "Determinante 2x2",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Calcula el determinante de la matriz [[2, 1], [5, 3]].\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 1
+   },
+   "reference": "2·3 − 1·5 = 1.\nRespuesta: 1",
+   "tags": [
+    "álgebra lineal"
+   ]
+  },
+  {
+   "title": "Desarrollo de un binomio",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Desarrolla (x + 2)³.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "x**3 + 6*x**2 + 12*x + 8"
+   },
+   "reference": "Respuesta: x³ + 6x² + 12x + 8",
+   "tags": [
+    "álgebra"
+   ]
+  },
+  {
+   "title": "Factorización",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Factoriza el polinomio x² − 9.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "(x - 3)*(x + 3)"
+   },
+   "reference": "Respuesta: (x − 3)(x + 3)",
+   "tags": [
+    "álgebra"
+   ]
+  },
+  {
+   "title": "Logaritmos",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Calcula log₂(64) + ln(e⁵).\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 11
+   },
+   "reference": "6 + 5 = 11.\nRespuesta: 11",
+   "tags": [
+    "logaritmos"
+   ]
+  },
+  {
+   "title": "Al menos un seis",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Se lanza un dado equilibrado 4 veces. ¿Cuál es la probabilidad de obtener al menos un 6? Da la fracción irreducible.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "671/1296"
+   },
+   "reference": "1 − (5/6)⁴ = 671/1296.\nRespuesta: 671/1296",
+   "tags": [
+    "probabilidad"
+   ]
+  },
+  {
+   "title": "Interés compuesto",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Se invierten 1000 € al 5 % anual con interés compuesto durante 3 años. ¿Cuántos euros hay al final? Da el resultado con dos decimales.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 1157.63,
+    "tolerance": {
+     "abs": 0.01
+    }
+   },
+   "reference": "1000 · 1,05³ = 1157,625.\nRespuesta: 1157,63",
+   "tags": [
+    "finanzas"
+   ]
+  },
+  {
+   "title": "Serie geométrica infinita",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Calcula la suma de la serie infinita 3 + 1 + 1/3 + 1/9 + …\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "9/2"
+   },
+   "reference": "a = 3, r = 1/3: 3 / (1 − 1/3) = 9/2.\nRespuesta: 9/2",
+   "tags": [
+    "series"
+   ]
+  },
+  {
+   "title": "Máximo de una parábola",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Calcula el valor máximo de la función f(x) = −x² + 6x + 1.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "number",
+    "expected": 10
+   },
+   "reference": "Vértice en x = 3: f(3) = 10.\nRespuesta: 10",
+   "tags": [
+    "cálculo"
+   ]
+  },
+  {
+   "title": "Volumen de una esfera",
+   "prompt": {
+    "system": "Resuelve el problema de matemáticas con rigor. Muestra el razonamiento de forma breve y termina con una última línea «Respuesta: …» que contenga solo el resultado final.",
+    "text": "Calcula el volumen de una esfera de radio 3. Deja el resultado en función de π.\n\nTermina con una línea «Respuesta: …»."
+   },
+   "checker": {
+    "type": "math_equiv",
+    "expected": "36*pi"
+   },
+   "reference": "V = 4/3 · π · 27 = 36π.\nRespuesta: 36π",
+   "tags": [
+    "geometría"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1286 @@
+{
+ "id": "extraccion",
+ "name": "Extracción de datos",
+ "description": "Sacar campos de facturas, correos, envíos, currículos y otros documentos (con datos inventados) a JSON.",
+ "category": "extraction",
+ "version": 2,
+ "max_tokens": 700,
+ "position": 5,
+ "cases": [
+  {
+   "title": "Factura de suministros",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Factura:\n\n\"\"\"\nFACTURA Nº 2025-0417\nFecha de emisión: 12/03/2025\nProveedor: Suministros Ribera S.L. (CIF B12345678)\nCliente: Taller Mecánico Hermanos Vidal\n\nConcepto                      Uds   Precio     Importe\nFiltro de aceite               6    8,50 €     51,00 €\nLiquido de frenos 1 L          4   12,75 €     51,00 €\n\nBase imponible: 102,00 €\nIVA (21 %): 21,42 €\nTOTAL: 123,42 €\nVencimiento: 11/04/2025\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- numero (texto), fecha_emision (AAAA-MM-DD), proveedor (texto), base_imponible (número), iva (número), total (número), vencimiento (AAAA-MM-DD)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "numero",
+      "fecha_emision",
+      "proveedor",
+      "base_imponible",
+      "iva",
+      "total",
+      "vencimiento"
+     ],
+     "properties": {
+      "numero": {
+       "type": "string"
+      },
+      "fecha_emision": {
+       "type": "string"
+      },
+      "proveedor": {
+       "type": "string"
+      },
+      "base_imponible": {
+       "type": "number"
+      },
+      "iva": {
+       "type": "number"
+      },
+      "total": {
+       "type": "number"
+      },
+      "vencimiento": {
+       "type": "string"
+      }
+     }
+    },
+    "expected": {
+     "numero": "2025-0417",
+     "fecha_emision": "2025-03-12",
+     "proveedor": "Suministros Ribera S.L.",
+     "base_imponible": 102.0,
+     "iva": 21.42,
+     "total": 123.42,
+     "vencimiento": "2025-04-11"
+    },
+    "rules": {
+     "proveedor": "contains"
+    }
+   },
+   "reference": "{\"numero\": \"2025-0417\", \"fecha_emision\": \"2025-03-12\", \"proveedor\": \"Suministros Ribera S.L.\", \"base_imponible\": 102.0, \"iva\": 21.42, \"total\": 123.42, \"vencimiento\": \"2025-04-11\"}",
+   "tags": [
+    "extracción",
+    "factura"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Factura con líneas",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Factura:\n\n\"\"\"\nPastelería Los Almendros\nFactura simplificada 0093\nFecha: 4 de julio de 2025\n\n2 x Tarta de manzana ........ 18,00 € (9,00 € ud.)\n1 x Caja de polvorones ...... 7,50 €\n3 x Café con leche .......... 4,50 € (1,50 € ud.)\n\nTotal a pagar: 30,00 € (IVA incluido)\nPagado con tarjeta\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- establecimiento (texto), fecha (AAAA-MM-DD), lineas (lista de objetos con producto y cantidad), total (número), metodo_pago (\"tarjeta\" o \"efectivo\")"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "establecimiento",
+      "fecha",
+      "lineas",
+      "total",
+      "metodo_pago"
+     ],
+     "properties": {
+      "establecimiento": {
+       "type": "string"
+      },
+      "fecha": {
+       "type": "string"
+      },
+      "lineas": {
+       "type": "array"
+      },
+      "total": {
+       "type": "number"
+      },
+      "metodo_pago": {
+       "type": "string"
+      }
+     }
+    },
+    "expected": {
+     "establecimiento": "Pastelería Los Almendros",
+     "fecha": "2025-07-04",
+     "total": 30.0,
+     "metodo_pago": "tarjeta",
+     "lineas": [
+      {
+       "producto": "Tarta de manzana",
+       "cantidad": 2
+      },
+      {
+       "producto": "Caja de polvorones",
+       "cantidad": 1
+      },
+      {
+       "producto": "Café con leche",
+       "cantidad": 3
+      }
+     ]
+    }
+   },
+   "reference": "{\"establecimiento\": \"Pastelería Los Almendros\", \"fecha\": \"2025-07-04\", \"total\": 30.0, \"metodo_pago\": \"tarjeta\", \"lineas\": [{\"producto\": \"Tarta de manzana\", \"cantidad\": 2}, {\"producto\": \"Caja de polvorones\", \"cantidad\": 1}, {\"producto\": \"Café con leche\", \"cantidad\": 3}]}",
+   "tags": [
+    "extracción",
+    "factura"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Factura en inglés con fecha americana",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Invoice:\n\n\"\"\"\nINVOICE #INV-88213\nDate: 03/25/2025 (MM/DD/YYYY)\nBilled to: Northwind Fisheries Ltd.\nSupplier: Harbor Lights Printing\nDescription: 500 printed menus (A4, glossy)\nSubtotal: $412.00\nSales tax (8 %): $32.96\nAmount due: $444.96\nPayment terms: net 30\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- numero (texto), fecha (AAAA-MM-DD), cliente (texto), moneda (código ISO de 3 letras), subtotal (número), impuesto (número), total (número), plazo_dias (entero)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "numero",
+      "fecha",
+      "cliente",
+      "moneda",
+      "subtotal",
+      "impuesto",
+      "total",
+      "plazo_dias"
+     ],
+     "properties": {
+      "numero": {
+       "type": "string"
+      },
+      "fecha": {
+       "type": "string"
+      },
+      "cliente": {
+       "type": "string"
+      },
+      "moneda": {
+       "type": "string"
+      },
+      "subtotal": {
+       "type": "number"
+      },
+      "impuesto": {
+       "type": "number"
+      },
+      "total": {
+       "type": "number"
+      },
+      "plazo_dias": {
+       "type": "number"
+      }
+     }
+    },
+    "expected": {
+     "numero": "INV-88213",
+     "fecha": "2025-03-25",
+     "cliente": "Northwind Fisheries Ltd.",
+     "moneda": "USD",
+     "subtotal": 412.0,
+     "impuesto": 32.96,
+     "total": 444.96,
+     "plazo_dias": 30
+    }
+   },
+   "reference": "{\"numero\": \"INV-88213\", \"fecha\": \"2025-03-25\", \"cliente\": \"Northwind Fisheries Ltd.\", \"moneda\": \"USD\", \"subtotal\": 412.0, \"impuesto\": 32.96, \"total\": 444.96, \"plazo_dias\": 30}",
+   "tags": [
+    "extracción",
+    "factura",
+    "inglés"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Ticket de gasolinera",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Ticket:\n\n\"\"\"\nESTACIÓN DE SERVICIO EL CRUCE\nC/ Real, 14 - Medina del Campo\n17-08-2025  18:42\nSurtidor 5  Diésel e+\n42,36 L x 1,479 €/L\nIMPORTE: 62,65 €\nIVA 21 % incluido: 10,87 €\nGracias por su visita\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- fecha (AAAA-MM-DD), hora (HH:MM), combustible (texto), litros (número), precio_litro (número), importe (número)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "fecha",
+      "hora",
+      "combustible",
+      "litros",
+      "precio_litro",
+      "importe"
+     ],
+     "properties": {
+      "fecha": {
+       "type": "string"
+      },
+      "hora": {
+       "type": "string"
+      },
+      "combustible": {
+       "type": "string"
+      },
+      "litros": {
+       "type": "number"
+      },
+      "precio_litro": {
+       "type": "number"
+      },
+      "importe": {
+       "type": "number"
+      }
+     }
+    },
+    "expected": {
+     "fecha": "2025-08-17",
+     "hora": "18:42",
+     "combustible": "Diésel",
+     "litros": 42.36,
+     "precio_litro": 1.479,
+     "importe": 62.65
+    },
+    "rules": {
+     "combustible": "contains"
+    }
+   },
+   "reference": "{\"fecha\": \"2025-08-17\", \"hora\": \"18:42\", \"combustible\": \"Diésel\", \"litros\": 42.36, \"precio_litro\": 1.479, \"importe\": 62.65}",
+   "tags": [
+    "extracción",
+    "ticket"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Correo de reunión",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Correo:\n\n\"\"\"\nDe: Irene Salvatierra <irene.salvatierra@example.org>\nPara: equipo-producto@example.org\nAsunto: Cambio de sala para el comité del jueves\n\nHola a todos:\n\nOs aviso de que el comité de producto del jueves 9 de octubre pasa de la sala Azul a la sala Magallanes, en la tercera planta. Empezamos a las 16:30 en punto y durará una hora. Por favor, traed la revisión de métricas del tercer trimestre.\n\nUn saludo,\nIrene\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- remitente_nombre (texto), asunto (texto), fecha_reunion (texto tal como aparece), hora (HH:MM), sala (texto), duracion_minutos (entero), lleva (qué hay que traer, texto breve)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "remitente_nombre",
+      "asunto",
+      "fecha_reunion",
+      "hora",
+      "sala",
+      "duracion_minutos",
+      "lleva"
+     ],
+     "properties": {
+      "remitente_nombre": {
+       "type": "string"
+      },
+      "asunto": {
+       "type": "string"
+      },
+      "fecha_reunion": {
+       "type": "string"
+      },
+      "hora": {
+       "type": "string"
+      },
+      "sala": {
+       "type": "string"
+      },
+      "duracion_minutos": {
+       "type": "number"
+      },
+      "lleva": {
+       "type": "string"
+      }
+     }
+    },
+    "expected": {
+     "remitente_nombre": "Irene Salvatierra",
+     "asunto": "Cambio de sala para el comité del jueves",
+     "fecha_reunion": "jueves 9 de octubre",
+     "hora": "16:30",
+     "sala": "Magallanes",
+     "duracion_minutos": 60,
+     "lleva": "revisión de métricas"
+    },
+    "rules": {
+     "fecha_reunion": "contains",
+     "lleva": "contains",
+     "sala": "norm"
+    }
+   },
+   "reference": "{\"remitente_nombre\": \"Irene Salvatierra\", \"asunto\": \"Cambio de sala para el comité del jueves\", \"fecha_reunion\": \"jueves 9 de octubre\", \"hora\": \"16:30\", \"sala\": \"Magallanes\", \"duracion_minutos\": 60, \"lleva\": \"revisión de métricas\"}",
+   "tags": [
+    "extracción",
+    "correo"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Correo de incidencia",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Correo:\n\n\"\"\"\nAsunto: URGENTE - caída del servicio de pagos (ticket INC-30417)\n\nBuenas tardes, desde las 09:15 de hoy los pagos con tarjeta fallan en la tienda de Valladolid y en la de León. La de Burgos funciona con normalidad. El proveedor dice que está investigando y que no hay hora estimada. Impacto: unas 40 operaciones fallidas. Contacto en guardia: Martín Olmedo, 600 000 123.\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- ticket (texto), prioridad (\"alta\", \"media\" o \"baja\"), tiendas_afectadas (lista de ciudades), tienda_sin_problemas (texto), operaciones_fallidas (entero), contacto (texto), telefono (texto)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "ticket",
+      "prioridad",
+      "tiendas_afectadas",
+      "tienda_sin_problemas",
+      "operaciones_fallidas",
+      "contacto",
+      "telefono"
+     ],
+     "properties": {
+      "ticket": {
+       "type": "string"
+      },
+      "prioridad": {
+       "type": "string"
+      },
+      "tiendas_afectadas": {
+       "type": "array"
+      },
+      "tienda_sin_problemas": {
+       "type": "string"
+      },
+      "operaciones_fallidas": {
+       "type": "number"
+      },
+      "contacto": {
+       "type": "string"
+      },
+      "telefono": {
+       "type": "string"
+      }
+     }
+    },
+    "expected": {
+     "ticket": "INC-30417",
+     "prioridad": "alta",
+     "tiendas_afectadas": [
+      "Valladolid",
+      "León"
+     ],
+     "tienda_sin_problemas": "Burgos",
+     "operaciones_fallidas": 40,
+     "contacto": "Martín Olmedo",
+     "telefono": "600 000 123"
+    },
+    "rules": {
+     "tiendas_afectadas": "unordered",
+     "telefono": "contains",
+     "tienda_sin_problemas": "norm"
+    }
+   },
+   "reference": "{\"ticket\": \"INC-30417\", \"prioridad\": \"alta\", \"tiendas_afectadas\": [\"Valladolid\", \"León\"], \"tienda_sin_problemas\": \"Burgos\", \"operaciones_fallidas\": 40, \"contacto\": \"Martín Olmedo\", \"telefono\": \"600 000 123\"}",
+   "tags": [
+    "extracción",
+    "correo"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Correo de cancelación de reserva",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Correo:\n\n\"\"\"\nEstimada Sra. Pardo:\n\nLamentamos comunicarle que la reserva R-5521 (habitación doble, del 20 al 23 de noviembre de 2025, 3 noches) ha sido cancelada por obras imprevistas en el hotel. Le reembolsaremos los 285 € abonados en un plazo máximo de 7 días laborables. Si desea, podemos ofrecerle una habitación equivalente en nuestro hotel de la calle Mayor.\n\nAtentamente,\nRecepción — Hotel Mirador\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- reserva (texto), entrada (AAAA-MM-DD), salida (AAAA-MM-DD), noches (entero), motivo (texto breve), reembolso (número en euros), plazo_reembolso_dias (entero), alternativa_ofrecida (booleano)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "reserva",
+      "entrada",
+      "salida",
+      "noches",
+      "motivo",
+      "reembolso",
+      "plazo_reembolso_dias",
+      "alternativa_ofrecida"
+     ],
+     "properties": {
+      "reserva": {
+       "type": "string"
+      },
+      "entrada": {
+       "type": "string"
+      },
+      "salida": {
+       "type": "string"
+      },
+      "noches": {
+       "type": "number"
+      },
+      "motivo": {
+       "type": "string"
+      },
+      "reembolso": {
+       "type": "number"
+      },
+      "plazo_reembolso_dias": {
+       "type": "number"
+      },
+      "alternativa_ofrecida": {
+       "type": "boolean"
+      }
+     }
+    },
+    "expected": {
+     "reserva": "R-5521",
+     "entrada": "2025-11-20",
+     "salida": "2025-11-23",
+     "noches": 3,
+     "motivo": "obras",
+     "reembolso": 285,
+     "plazo_reembolso_dias": 7,
+     "alternativa_ofrecida": true
+    },
+    "rules": {
+     "motivo": "contains"
+    }
+   },
+   "reference": "{\"reserva\": \"R-5521\", \"entrada\": \"2025-11-20\", \"salida\": \"2025-11-23\", \"noches\": 3, \"motivo\": \"obras imprevistas en el hotel\", \"reembolso\": 285, \"plazo_reembolso_dias\": 7, \"alternativa_ofrecida\": true}",
+   "tags": [
+    "extracción",
+    "correo"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Correo con varias tareas",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Correo:\n\n\"\"\"\nHola Sergio:\n\nResumen de lo hablado: (1) tú preparas el informe de ventas antes del viernes 17; (2) Noelia revisa el contrato con el proveedor la semana que viene; (3) yo reservo la sala para la demo del día 24. Si algo se retrasa, avisadme.\n\nGracias,\nBea\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- tareas (lista de objetos con responsable y tarea), firmante (texto)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "tareas",
+      "firmante"
+     ],
+     "properties": {
+      "tareas": {
+       "type": "array"
+      },
+      "firmante": {
+       "type": "string"
+      }
+     }
+    },
+    "expected": {
+     "firmante": "Bea",
+     "tareas": [
+      {
+       "responsable": "Sergio"
+      },
+      {
+       "responsable": "Noelia"
+      },
+      {
+       "responsable": "Bea"
+      }
+     ]
+    },
+    "rules": {
+     "tareas": "unordered"
+    }
+   },
+   "reference": "{\"firmante\": \"Bea\", \"tareas\": [{\"responsable\": \"Sergio\"}, {\"responsable\": \"Noelia\"}, {\"responsable\": \"Bea\"}]}",
+   "tags": [
+    "extracción",
+    "correo",
+    "listas"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Aviso de envío",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Aviso de envío:\n\n\"\"\"\nTu pedido #78-4412 ha salido de nuestro almacén de Zaragoza.\nTransportista: TransIbérica Express\nNúmero de seguimiento: TIE0094412ES\nEntrega estimada: miércoles 1 de octubre de 2025, entre las 9:00 y las 14:00\nBultos: 2 (peso total 7,4 kg)\nDirección de entrega: Calle del Olmo 22, 3.º B, 47001 Valladolid\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- pedido (texto), transportista (texto), seguimiento (texto), entrega_fecha (AAAA-MM-DD), franja (texto), bultos (entero), peso_kg (número), codigo_postal (texto), ciudad (texto)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "pedido",
+      "transportista",
+      "seguimiento",
+      "entrega_fecha",
+      "franja",
+      "bultos",
+      "peso_kg",
+      "codigo_postal",
+      "ciudad"
+     ],
+     "properties": {
+      "pedido": {
+       "type": "string"
+      },
+      "transportista": {
+       "type": "string"
+      },
+      "seguimiento": {
+       "type": "string"
+      },
+      "entrega_fecha": {
+       "type": "string"
+      },
+      "franja": {
+       "type": "string"
+      },
+      "bultos": {
+       "type": "number"
+      },
+      "peso_kg": {
+       "type": "number"
+      },
+      "codigo_postal": {
+       "type": "string"
+      },
+      "ciudad": {
+       "type": "string"
+      }
+     }
+    },
+    "expected": {
+     "pedido": "78-4412",
+     "transportista": "TransIbérica Express",
+     "seguimiento": "TIE0094412ES",
+     "entrega_fecha": "2025-10-01",
+     "franja": "9:00-14:00",
+     "bultos": 2,
+     "peso_kg": 7.4,
+     "codigo_postal": "47001",
+     "ciudad": "Valladolid"
+    },
+    "rules": {
+     "franja": "contains",
+     "pedido": "contains",
+     "ciudad": "contains"
+    }
+   },
+   "reference": "{\"pedido\": \"78-4412\", \"transportista\": \"TransIbérica Express\", \"seguimiento\": \"TIE0094412ES\", \"entrega_fecha\": \"2025-10-01\", \"franja\": \"9:00-14:00\", \"bultos\": 2, \"peso_kg\": 7.4, \"codigo_postal\": \"47001\", \"ciudad\": \"Valladolid\"}",
+   "tags": [
+    "extracción",
+    "envío"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Incidencia de entrega",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Notificación:\n\n\"\"\"\nIntento de entrega fallido.\nEnvío: ES-2209-7781 · Remitente: Librería Anaquel\nFecha del intento: 2025-06-11 a las 12:20\nMotivo: ausente (no había nadie en el domicilio)\nSe volverá a intentar el siguiente día hábil. Si no se recoge en el punto de conveniencia Estanco Centro (C/ Larga 3) antes del 18/06/2025, el paquete será devuelto.\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- envio (texto), remitente (texto), fecha_intento (AAAA-MM-DD), motivo (texto breve), punto_recogida (texto), limite_recogida (AAAA-MM-DD)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "envio",
+      "remitente",
+      "fecha_intento",
+      "motivo",
+      "punto_recogida",
+      "limite_recogida"
+     ],
+     "properties": {
+      "envio": {
+       "type": "string"
+      },
+      "remitente": {
+       "type": "string"
+      },
+      "fecha_intento": {
+       "type": "string"
+      },
+      "motivo": {
+       "type": "string"
+      },
+      "punto_recogida": {
+       "type": "string"
+      },
+      "limite_recogida": {
+       "type": "string"
+      }
+     }
+    },
+    "expected": {
+     "envio": "ES-2209-7781",
+     "remitente": "Librería Anaquel",
+     "fecha_intento": "2025-06-11",
+     "motivo": "ausente",
+     "punto_recogida": "Estanco Centro",
+     "limite_recogida": "2025-06-18"
+    },
+    "rules": {
+     "motivo": "contains",
+     "punto_recogida": "contains"
+    }
+   },
+   "reference": "{\"envio\": \"ES-2209-7781\", \"remitente\": \"Librería Anaquel\", \"fecha_intento\": \"2025-06-11\", \"motivo\": \"ausente\", \"punto_recogida\": \"Estanco Centro\", \"limite_recogida\": \"2025-06-18\"}",
+   "tags": [
+    "extracción",
+    "envío"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Albarán de mercancía",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Albarán:\n\n\"\"\"\nALBARÁN 3321/B\nDestino: Ferretería Castilla, Av. de Segovia 80\nFecha de salida: 22/09/2025\n- Taladro percutor 700 W, ref. TD-700, 4 uds.\n- Broca widia 8 mm, ref. BW-08, 50 uds.\n- Guantes de trabajo talla L, ref. GT-L, 24 pares\nObservaciones: mercancía frágil, entregar en horario de mañana.\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- albaran (texto), destino (texto), fecha (AAAA-MM-DD), articulos (lista de objetos con ref y cantidad), fragil (booleano)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "albaran",
+      "destino",
+      "fecha",
+      "articulos",
+      "fragil"
+     ],
+     "properties": {
+      "albaran": {
+       "type": "string"
+      },
+      "destino": {
+       "type": "string"
+      },
+      "fecha": {
+       "type": "string"
+      },
+      "articulos": {
+       "type": "array"
+      },
+      "fragil": {
+       "type": "boolean"
+      }
+     }
+    },
+    "expected": {
+     "albaran": "3321/B",
+     "destino": "Ferretería Castilla",
+     "fecha": "2025-09-22",
+     "fragil": true,
+     "articulos": [
+      {
+       "ref": "TD-700",
+       "cantidad": 4
+      },
+      {
+       "ref": "BW-08",
+       "cantidad": 50
+      },
+      {
+       "ref": "GT-L",
+       "cantidad": 24
+      }
+     ]
+    },
+    "rules": {
+     "destino": "contains"
+    }
+   },
+   "reference": "{\"albaran\": \"3321/B\", \"destino\": \"Ferretería Castilla\", \"fecha\": \"2025-09-22\", \"fragil\": true, \"articulos\": [{\"ref\": \"TD-700\", \"cantidad\": 4}, {\"ref\": \"BW-08\", \"cantidad\": 50}, {\"ref\": \"GT-L\", \"cantidad\": 24}]}",
+   "tags": [
+    "extracción",
+    "envío",
+    "listas"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Currículum de desarrolladora",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Currículum:\n\n\"\"\"\nLAURA BENÍTEZ ARROYO — Desarrolladora backend\nlaura.benitez@example.org · Sevilla\n\nExperiencia\n2021–actualidad: Ingeniera de software en Kestrel Logistics (Sevilla). Python, PostgreSQL, Kafka.\n2018–2021: Desarrolladora en Estudio Faro (Cádiz). Java y Spring.\n\nFormación\nGrado en Ingeniería Informática, Universidad de Sevilla (2014–2018).\n\nIdiomas: español (nativo), inglés (C1).\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- nombre (texto), email (texto), ciudad (texto), empresa_actual (texto), anio_inicio_empleo_actual (entero), grado (texto), universidad (texto), idiomas (lista de textos con solo el nombre del idioma)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "nombre",
+      "email",
+      "ciudad",
+      "empresa_actual",
+      "anio_inicio_empleo_actual",
+      "grado",
+      "universidad",
+      "idiomas"
+     ],
+     "properties": {
+      "nombre": {
+       "type": "string"
+      },
+      "email": {
+       "type": "string"
+      },
+      "ciudad": {
+       "type": "string"
+      },
+      "empresa_actual": {
+       "type": "string"
+      },
+      "anio_inicio_empleo_actual": {
+       "type": "number"
+      },
+      "grado": {
+       "type": "string"
+      },
+      "universidad": {
+       "type": "string"
+      },
+      "idiomas": {
+       "type": "array"
+      }
+     }
+    },
+    "expected": {
+     "nombre": "Laura Benítez Arroyo",
+     "email": "laura.benitez@example.org",
+     "ciudad": "Sevilla",
+     "empresa_actual": "Kestrel Logistics",
+     "anio_inicio_empleo_actual": 2021,
+     "grado": "Ingeniería Informática",
+     "universidad": "Universidad de Sevilla",
+     "idiomas": [
+      "español",
+      "inglés"
+     ]
+    },
+    "rules": {
+     "grado": "contains",
+     "idiomas": "unordered",
+     "ciudad": "contains"
+    }
+   },
+   "reference": "{\"nombre\": \"Laura Benítez Arroyo\", \"email\": \"laura.benitez@example.org\", \"ciudad\": \"Sevilla\", \"empresa_actual\": \"Kestrel Logistics\", \"anio_inicio_empleo_actual\": 2021, \"grado\": \"Ingeniería Informática\", \"universidad\": \"Universidad de Sevilla\", \"idiomas\": [\"español\", \"inglés\"]}",
+   "tags": [
+    "extracción",
+    "currículum"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Currículum con huecos",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Currículum:\n\n\"\"\"\nMateo Quiroga\nTeléfono: 611 000 456\n\nPerfil: electricista con 12 años de experiencia en instalaciones industriales.\nCarnet de conducir B. Disponibilidad inmediata.\nNo adjunta referencias.\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- nombre (texto), telefono (texto), profesion (texto), anios_experiencia (entero), carnet_conducir (texto), email (texto o null), referencias (texto o null)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "nombre",
+      "telefono",
+      "profesion",
+      "anios_experiencia",
+      "carnet_conducir",
+      "email",
+      "referencias"
+     ],
+     "properties": {
+      "nombre": {
+       "type": "string"
+      },
+      "telefono": {
+       "type": "string"
+      },
+      "profesion": {
+       "type": "string"
+      },
+      "anios_experiencia": {
+       "type": "number"
+      },
+      "carnet_conducir": {
+       "type": "string"
+      },
+      "email": {},
+      "referencias": {}
+     }
+    },
+    "expected": {
+     "nombre": "Mateo Quiroga",
+     "telefono": "611 000 456",
+     "profesion": "electricista",
+     "anios_experiencia": 12,
+     "carnet_conducir": "B",
+     "email": null,
+     "referencias": null
+    },
+    "rules": {
+     "profesion": "contains"
+    }
+   },
+   "reference": "{\"nombre\": \"Mateo Quiroga\", \"telefono\": \"611 000 456\", \"profesion\": \"electricista\", \"anios_experiencia\": 12, \"carnet_conducir\": \"B\", \"email\": null, \"referencias\": null}",
+   "tags": [
+    "extracción",
+    "currículum",
+    "nulos"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Oferta de empleo",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Oferta:\n\n\"\"\"\nBuscamos técnico/a de mantenimiento para nuestra planta de Aranda de Duero. Contrato indefinido, jornada completa (40 h semanales), turno rotativo. Salario: entre 24.000 y 28.000 euros brutos anuales según experiencia. Se requiere FP de Grado Superior en Mantenimiento Industrial y al menos 3 años de experiencia. Incorporación en enero de 2026. Enviar CV antes del 15 de noviembre a empleo@example.org.\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- puesto (texto), localidad (texto), tipo_contrato (texto), horas_semanales (entero), salario_min (número), salario_max (número), anios_experiencia_minimos (entero), contacto (texto), fecha_limite (AAAA-MM-DD, año 2025)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "puesto",
+      "localidad",
+      "tipo_contrato",
+      "horas_semanales",
+      "salario_min",
+      "salario_max",
+      "anios_experiencia_minimos",
+      "contacto",
+      "fecha_limite"
+     ],
+     "properties": {
+      "puesto": {
+       "type": "string"
+      },
+      "localidad": {
+       "type": "string"
+      },
+      "tipo_contrato": {
+       "type": "string"
+      },
+      "horas_semanales": {
+       "type": "number"
+      },
+      "salario_min": {
+       "type": "number"
+      },
+      "salario_max": {
+       "type": "number"
+      },
+      "anios_experiencia_minimos": {
+       "type": "number"
+      },
+      "contacto": {
+       "type": "string"
+      },
+      "fecha_limite": {
+       "type": "string"
+      }
+     }
+    },
+    "expected": {
+     "puesto": "técnico de mantenimiento",
+     "localidad": "Aranda de Duero",
+     "tipo_contrato": "indefinido",
+     "horas_semanales": 40,
+     "salario_min": 24000,
+     "salario_max": 28000,
+     "anios_experiencia_minimos": 3,
+     "contacto": "empleo@example.org",
+     "fecha_limite": "2025-11-15"
+    },
+    "rules": {
+     "puesto": "contains",
+     "tipo_contrato": "contains",
+     "localidad": "contains"
+    }
+   },
+   "reference": "{\"puesto\": \"técnico de mantenimiento\", \"localidad\": \"Aranda de Duero\", \"tipo_contrato\": \"indefinido\", \"horas_semanales\": 40, \"salario_min\": 24000, \"salario_max\": 28000, \"anios_experiencia_minimos\": 3, \"contacto\": \"empleo@example.org\", \"fecha_limite\": \"2025-11-15\"}",
+   "tags": [
+    "extracción",
+    "empleo"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Convocatoria de evento",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Cartel:\n\n\"\"\"\nXIV FERIA DEL LIBRO DE MEDINA\nDel 3 al 5 de octubre de 2025 · Plaza Mayor\nEntrada gratuita. Horario: viernes de 17:00 a 21:00, sábado y domingo de 11:00 a 14:00 y de 17:00 a 21:00.\nInvitado de honor: el poeta Aurelio Zuloaga. Actividad infantil el sábado a las 12:00.\nOrganiza: Asociación Cultural Páginas.\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- nombre (texto), edicion (entero), fecha_inicio (AAAA-MM-DD), fecha_fin (AAAA-MM-DD), lugar (texto), gratuita (booleano), invitado_honor (texto), organizador (texto)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "nombre",
+      "edicion",
+      "fecha_inicio",
+      "fecha_fin",
+      "lugar",
+      "gratuita",
+      "invitado_honor",
+      "organizador"
+     ],
+     "properties": {
+      "nombre": {
+       "type": "string"
+      },
+      "edicion": {
+       "type": "number"
+      },
+      "fecha_inicio": {
+       "type": "string"
+      },
+      "fecha_fin": {
+       "type": "string"
+      },
+      "lugar": {
+       "type": "string"
+      },
+      "gratuita": {
+       "type": "boolean"
+      },
+      "invitado_honor": {
+       "type": "string"
+      },
+      "organizador": {
+       "type": "string"
+      }
+     }
+    },
+    "expected": {
+     "nombre": "Feria del Libro de Medina",
+     "edicion": 14,
+     "fecha_inicio": "2025-10-03",
+     "fecha_fin": "2025-10-05",
+     "lugar": "Plaza Mayor",
+     "gratuita": true,
+     "invitado_honor": "Aurelio Zuloaga",
+     "organizador": "Asociación Cultural Páginas"
+    },
+    "rules": {
+     "nombre": "contains",
+     "lugar": "contains"
+    }
+   },
+   "reference": "{\"nombre\": \"Feria del Libro de Medina\", \"edicion\": 14, \"fecha_inicio\": \"2025-10-03\", \"fecha_fin\": \"2025-10-05\", \"lugar\": \"Plaza Mayor\", \"gratuita\": true, \"invitado_honor\": \"Aurelio Zuloaga\", \"organizador\": \"Asociación Cultural Páginas\"}",
+   "tags": [
+    "extracción",
+    "evento"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Receta a datos estructurados",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Receta:\n\n\"\"\"\nTortilla de calabacín (4 personas). Ingredientes: 6 huevos, 2 calabacines medianos, 1 cebolla, 80 ml de aceite de oliva y sal. Preparación: pochar la cebolla y el calabacín 15 minutos, batir los huevos, mezclar y cuajar 4 minutos por cada lado. Tiempo total: 35 minutos.\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- nombre (texto), raciones (entero), ingredientes (lista de textos solo con el nombre del ingrediente, en singular o como aparezca, sin cantidades), tiempo_total_min (entero)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "nombre",
+      "raciones",
+      "ingredientes",
+      "tiempo_total_min"
+     ],
+     "properties": {
+      "nombre": {
+       "type": "string"
+      },
+      "raciones": {
+       "type": "number"
+      },
+      "ingredientes": {
+       "type": "array"
+      },
+      "tiempo_total_min": {
+       "type": "number"
+      }
+     }
+    },
+    "expected": {
+     "nombre": "Tortilla de calabacín",
+     "raciones": 4,
+     "tiempo_total_min": 35
+    }
+   },
+   "reference": "{\"nombre\": \"Tortilla de calabacín\", \"raciones\": 4, \"ingredientes\": [\"huevos\", \"calabacines\", \"cebolla\", \"aceite de oliva\", \"sal\"], \"tiempo_total_min\": 35}",
+   "tags": [
+    "extracción",
+    "receta"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Contrato de alquiler",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Extracto de contrato:\n\n\"\"\"\nCONTRATO DE ARRENDAMIENTO DE VIVIENDA. Arrendadora: Dña. Pilar Sanz Ortega. Arrendatario: D. Hugo Ferreiro Lage. Inmueble: piso en Calle Cervantes 9, 2.º A, Palencia. Duración: 5 años desde el 1 de febrero de 2026. Renta mensual: 620 euros, actualizable cada año según el IPC. Fianza: dos mensualidades. Gastos de comunidad incluidos en la renta.\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- arrendador (texto), arrendatario (texto), ciudad (texto), inicio (AAAA-MM-DD), duracion_anios (entero), renta_mensual (número), fianza_mensualidades (entero), comunidad_incluida (booleano)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "arrendador",
+      "arrendatario",
+      "ciudad",
+      "inicio",
+      "duracion_anios",
+      "renta_mensual",
+      "fianza_mensualidades",
+      "comunidad_incluida"
+     ],
+     "properties": {
+      "arrendador": {
+       "type": "string"
+      },
+      "arrendatario": {
+       "type": "string"
+      },
+      "ciudad": {
+       "type": "string"
+      },
+      "inicio": {
+       "type": "string"
+      },
+      "duracion_anios": {
+       "type": "number"
+      },
+      "renta_mensual": {
+       "type": "number"
+      },
+      "fianza_mensualidades": {
+       "type": "number"
+      },
+      "comunidad_incluida": {
+       "type": "boolean"
+      }
+     }
+    },
+    "expected": {
+     "arrendador": "Pilar Sanz Ortega",
+     "arrendatario": "Hugo Ferreiro Lage",
+     "ciudad": "Palencia",
+     "inicio": "2026-02-01",
+     "duracion_anios": 5,
+     "renta_mensual": 620,
+     "fianza_mensualidades": 2,
+     "comunidad_incluida": true
+    },
+    "rules": {
+     "arrendador": "contains",
+     "arrendatario": "contains",
+     "ciudad": "contains"
+    }
+   },
+   "reference": "{\"arrendador\": \"Pilar Sanz Ortega\", \"arrendatario\": \"Hugo Ferreiro Lage\", \"ciudad\": \"Palencia\", \"inicio\": \"2026-02-01\", \"duracion_anios\": 5, \"renta_mensual\": 620, \"fianza_mensualidades\": 2, \"comunidad_incluida\": true}",
+   "tags": [
+    "extracción",
+    "contrato"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Resultados deportivos",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Crónica:\n\n\"\"\"\nEl Racing de Aldea venció 3-1 al Unión Rivera en la jornada 7. Los goles locales los marcaron Ibarra (min. 12), Cuesta (min. 55) y Bravo (min. 78, de penalti); Soto adelantó al visitante en el minuto 30. Asistieron 2.340 espectadores. El árbitro expulsó al visitante Lozano en el minuto 70.\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- local (texto), visitante (texto), goles_local (entero), goles_visitante (entero), jornada (entero), espectadores (entero), expulsado (texto)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "local",
+      "visitante",
+      "goles_local",
+      "goles_visitante",
+      "jornada",
+      "espectadores",
+      "expulsado"
+     ],
+     "properties": {
+      "local": {
+       "type": "string"
+      },
+      "visitante": {
+       "type": "string"
+      },
+      "goles_local": {
+       "type": "number"
+      },
+      "goles_visitante": {
+       "type": "number"
+      },
+      "jornada": {
+       "type": "number"
+      },
+      "espectadores": {
+       "type": "number"
+      },
+      "expulsado": {
+       "type": "string"
+      }
+     }
+    },
+    "expected": {
+     "local": "Racing de Aldea",
+     "visitante": "Unión Rivera",
+     "goles_local": 3,
+     "goles_visitante": 1,
+     "jornada": 7,
+     "espectadores": 2340,
+     "expulsado": "Lozano"
+    },
+    "rules": {
+     "expulsado": "contains"
+    }
+   },
+   "reference": "{\"local\": \"Racing de Aldea\", \"visitante\": \"Unión Rivera\", \"goles_local\": 3, \"goles_visitante\": 1, \"jornada\": 7, \"espectadores\": 2340, \"expulsado\": \"Lozano\"}",
+   "tags": [
+    "extracción",
+    "crónica"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Parte meteorológico",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Parte:\n\n\"\"\"\nPrevisión para el sábado 14 de febrero en la provincia de Soria: cielos nubosos con nevadas débiles por encima de 1.100 m. Temperaturas mínimas de -6 °C en el Moncayo y máximas de 4 °C en la capital. Viento del noroeste de 30 a 50 km/h con rachas de 70. Aviso amarillo por nevadas de 15:00 a 23:59.\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- provincia (texto), fecha_dia (entero), temperatura_minima (número), temperatura_maxima (número), viento_max_rachas_kmh (entero), aviso_color (texto), aviso_desde (HH:MM)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "provincia",
+      "fecha_dia",
+      "temperatura_minima",
+      "temperatura_maxima",
+      "viento_max_rachas_kmh",
+      "aviso_color",
+      "aviso_desde"
+     ],
+     "properties": {
+      "provincia": {
+       "type": "string"
+      },
+      "fecha_dia": {
+       "type": "number"
+      },
+      "temperatura_minima": {
+       "type": "number"
+      },
+      "temperatura_maxima": {
+       "type": "number"
+      },
+      "viento_max_rachas_kmh": {
+       "type": "number"
+      },
+      "aviso_color": {
+       "type": "string"
+      },
+      "aviso_desde": {
+       "type": "string"
+      }
+     }
+    },
+    "expected": {
+     "provincia": "Soria",
+     "fecha_dia": 14,
+     "temperatura_minima": -6,
+     "temperatura_maxima": 4,
+     "viento_max_rachas_kmh": 70,
+     "aviso_color": "amarillo",
+     "aviso_desde": "15:00"
+    },
+    "rules": {
+     "provincia": "norm",
+     "aviso_color": "contains"
+    }
+   },
+   "reference": "{\"provincia\": \"Soria\", \"fecha_dia\": 14, \"temperatura_minima\": -6, \"temperatura_maxima\": 4, \"viento_max_rachas_kmh\": 70, \"aviso_color\": \"amarillo\", \"aviso_desde\": \"15:00\"}",
+   "tags": [
+    "extracción",
+    "parte"
+   ],
+   "max_tokens": 600
+  },
+  {
+   "title": "Reseña con sentimiento y puntuación",
+   "prompt": {
+    "system": "Eres un sistema de extracción de datos. Lees un documento y devuelves exclusivamente un objeto JSON válido con las claves pedidas, sin comentarios ni texto adicional. Si un dato no aparece, usa null.",
+    "text": "Reseña de cliente:\n\n\"\"\"\nCompré la cafetera el 2 de mayo y llegó en dos días. El café sale bien caliente y el depósito es cómodo, pero la tapa de plástico es endeble y a los dos meses ya se había rajado. Atención al cliente muy amable, me enviaron otra tapa gratis. Le pongo 4 de 5. La recomendaría con reservas.\n\"\"\"\n\nExtrae los datos y devuelve solo un JSON con estas claves:\n- producto (texto), valoracion (entero de 1 a 5), aspectos_positivos (lista de textos breves), aspecto_negativo (texto breve), recomienda (booleano), tapa_repuesta_gratis (booleano)"
+   },
+   "checker": {
+    "type": "json",
+    "schema": {
+     "type": "object",
+     "required": [
+      "producto",
+      "valoracion",
+      "aspectos_positivos",
+      "aspecto_negativo",
+      "recomienda",
+      "tapa_repuesta_gratis"
+     ],
+     "properties": {
+      "producto": {
+       "type": "string"
+      },
+      "valoracion": {
+       "type": "number"
+      },
+      "aspectos_positivos": {
+       "type": "array"
+      },
+      "aspecto_negativo": {
+       "type": "string"
+      },
+      "recomienda": {
+       "type": "boolean"
+      },
+      "tapa_repuesta_gratis": {
+       "type": "boolean"
+      }
+     }
+    },
+    "expected": {
+     "producto": "cafetera",
+     "valoracion": 4,
+     "recomienda": true,
+     "tapa_repuesta_gratis": true
+    },
+    "rules": {
+     "producto": "contains"
+    }
+   },
+   "reference": "{\"producto\": \"cafetera\", \"valoracion\": 4, \"aspectos_positivos\": [\"café caliente\", \"depósito cómodo\", \"atención al cliente\"], \"aspecto_negativo\": \"la tapa de plástico es endeble\", \"recomienda\": true, \"tapa_repuesta_gratis\": true}",
+   "tags": [
+    "extracción",
+    "reseña"
+   ],
+   "max_tokens": 600
+  }
+ ]
+}

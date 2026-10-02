@@ -1,0 +1,526 @@
+{
+ "id": "escritura-es",
+ "name": "Escritura en castellano",
+ "description": "Ortografía, gramática, resúmenes con límite de palabras, cambios de registro, anglicismos y textos con restricciones. Casi todo se comprueba automáticamente; unos pocos casos añaden un juez.",
+ "category": "writing_es",
+ "version": 1,
+ "max_tokens": 500,
+ "position": 1,
+ "cases": [
+  {
+   "title": "Reducir una frase conservando la fecha",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Reescribe la frase siguiente en un máximo de 14 palabras sin perder el día ni el mes:\n\n«El próximo martes 14 de octubre, a las diez de la mañana, tendrá lugar en la sala de juntas del segundo piso la reunión trimestral de todos los responsables de área.»\n\nDevuelve solo la frase."
+   },
+   "checker": {
+    "type": "constraints",
+    "max_words": 14,
+    "include": [
+     "14",
+     "octubre"
+    ],
+    "language": "es"
+   },
+   "reference": "Reunión trimestral de responsables: martes 14 de octubre, diez, sala de juntas.",
+   "tags": [
+    "resumen",
+    "restricciones"
+   ]
+  },
+  {
+   "title": "Corregir faltas de ortografía",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Corrige las faltas de ortografía del texto y devuelve solo el texto corregido:\n\nAyer fuimos a la playa y haviamos olvidado las toallas, asi que tubimos que comprar unas nuevas en un chiringuito. Despues de comer, nos bañamos asta las seis."
+   },
+   "checker": {
+    "type": "contains",
+    "all": [
+     "habíamos",
+     "así",
+     "tuvimos",
+     "Después",
+     "hasta"
+    ],
+    "none": [
+     "haviamos",
+     "tubimos",
+     "Despues",
+     "asta"
+    ],
+    "words": true
+   },
+   "reference": "Ayer fuimos a la playa y habíamos olvidado las toallas, así que tuvimos que comprar unas nuevas en un chiringuito. Después de comer, nos bañamos hasta las seis.",
+   "tags": [
+    "ortografía"
+   ]
+  },
+  {
+   "title": "Poner las tildes que faltan",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Pon las tildes y la puntuación que faltan y devuelve solo el texto corregido:\n\nMaria, la hermana de Pedro, nos dijo que el examen sera el miercoles pero el profesor aun no lo ha confirmado"
+   },
+   "checker": {
+    "type": "contains",
+    "all": [
+     "María",
+     "será",
+     "miércoles",
+     "aún"
+    ],
+    "none": [
+     "Maria",
+     "sera",
+     "miercoles",
+     "aun"
+    ],
+    "words": true
+   },
+   "reference": "María, la hermana de Pedro, nos dijo que el examen será el miércoles, pero el profesor aún no lo ha confirmado.",
+   "tags": [
+    "ortografía",
+    "tildes"
+   ]
+  },
+  {
+   "title": "Queísmo y dequeísmo",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Corrige los errores de régimen preposicional (queísmo y dequeísmo) y devuelve solo las dos frases corregidas:\n\n1. Pienso de que deberíamos salir antes.\n2. Me di cuenta que había olvidado las llaves."
+   },
+   "checker": {
+    "type": "contains",
+    "all": [
+     "Pienso que deberíamos",
+     "cuenta de que había"
+    ],
+    "none": [
+     "Pienso de que",
+     "cuenta que"
+    ]
+   },
+   "reference": "1. Pienso que deberíamos salir antes.\n2. Me di cuenta de que había olvidado las llaves.",
+   "tags": [
+    "gramática"
+   ]
+  },
+  {
+   "title": "Resumir un párrafo conservando los datos",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Resume el párrafo en un máximo de 35 palabras. Conserva el nombre de la arquitecta, el barrio y el año de reapertura.\n\nLa arquitecta Carmen Ruiz presentó ayer en Valencia el proyecto de rehabilitación del antiguo mercado de Ruzafa, un edificio de 1928 que lleva cerrado desde 1998. El plan, con un presupuesto de 4,2 millones de euros, prevé reabrir el mercado en la primavera de 2028 y añadir un aparcamiento para bicicletas. El ayuntamiento financiará el 60 % de la obra."
+   },
+   "checker": {
+    "type": "constraints",
+    "max_words": 35,
+    "include": [
+     "Carmen Ruiz",
+     "Ruzafa",
+     "2028"
+    ],
+    "language": "es"
+   },
+   "reference": "Carmen Ruiz presentó en Valencia la rehabilitación del mercado de Ruzafa, cerrado desde 1998, que reabrirá en 2028 con aparcamiento para bicicletas y un 60 % de financiación municipal.",
+   "tags": [
+    "resumen"
+   ]
+  },
+  {
+   "title": "Resumir en una sola frase",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Resume el texto en UNA sola frase de como máximo 25 palabras que mencione la fecha del cierre.\n\nLa biblioteca municipal cerrará por obras desde el 3 de noviembre hasta finales de enero. Durante ese tiempo, los préstamos se harán en el centro cívico, que abrirá de lunes a viernes por las tardes. Los socios no tendrán que pagar ninguna cuota extra."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_sentences": 1,
+    "max_words": 25,
+    "include": [
+     "3 de noviembre"
+    ]
+   },
+   "reference": "La biblioteca municipal cierra por obras desde el 3 de noviembre y prestará sus libros en el centro cívico por las tardes.",
+   "tags": [
+    "resumen"
+   ]
+  },
+  {
+   "title": "Pasar de usted a tuteo informal",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Reescribe este mensaje con tono cercano y coloquial, tuteando, como si se lo escribieras a un amigo. Devuelve solo el mensaje.\n\nEstimado señor Gómez: Le ruego que me envíe, a la mayor brevedad posible, el presupuesto que le solicité. Quedo a su disposición para cualquier aclaración. Atentamente, Lucía Marín."
+   },
+   "checker": {
+    "type": "constraints",
+    "exclude": [
+     "usted",
+     "estimado",
+     "atentamente",
+     "le ruego",
+     "su disposición"
+    ],
+    "include_any": [
+     "tú",
+     "tienes",
+     "puedes",
+     "envías",
+     "mándame",
+     "pásame",
+     "envíame",
+     "oye",
+     "hola",
+     "dime"
+    ],
+    "language": "es"
+   },
+   "reference": "¡Hola, Pablo! ¿Me puedes mandar el presupuesto que te pedí cuando tengas un rato? Si tienes dudas, dime. Un abrazo, Lucía.",
+   "tags": [
+    "registro",
+    "tuteo"
+   ]
+  },
+  {
+   "title": "Pasar de tuteo a usted formal",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Reescribe este mensaje en registro formal y tratando de usted. Devuelve solo el mensaje.\n\nOye, ¿me puedes decir a qué hora abre la oficina? Es que tengo que ir a entregarte unos papeles y no sé si te viene bien el jueves."
+   },
+   "checker": {
+    "type": "constraints",
+    "exclude": [
+     "oye",
+     "puedes",
+     "te viene",
+     "entregarte"
+    ],
+    "include_any": [
+     "usted",
+     "podría",
+     "le agradecería",
+     "le importaría",
+     "sería tan amable"
+    ],
+    "language": "es"
+   },
+   "reference": "Buenos días. ¿Podría indicarme a qué hora abre la oficina? Debo entregarle unos documentos y desearía saber si le viene bien el jueves.",
+   "tags": [
+    "registro",
+    "usted"
+   ]
+  },
+  {
+   "title": "Sustituir anglicismos de oficina",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Reescribe la frase sin ningún anglicismo, usando palabras castellanas equivalentes. Devuelve solo la frase.\n\nNecesitamos tener un feedback del cliente antes del deadline, así que agenda un meeting con el manager y envíale el briefing por email."
+   },
+   "checker": {
+    "type": "constraints",
+    "forbid_anglicisms": true,
+    "include": [
+     "reunión"
+    ],
+    "include_any": [
+     "plazo",
+     "fecha límite",
+     "límite"
+    ],
+    "language": "es"
+   },
+   "reference": "Necesitamos la opinión del cliente antes de la fecha límite, así que convoca una reunión con el responsable y envíale el resumen por correo.",
+   "tags": [
+    "anglicismos"
+   ]
+  },
+  {
+   "title": "Sustituir anglicismos de empresa",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Reescribe la frase sin ningún anglicismo. Devuelve solo la frase.\n\nEl CEO hará un call con los stakeholders para revisar el target del trimestre y compartir el report en el workshop del viernes."
+   },
+   "checker": {
+    "type": "constraints",
+    "forbid_anglicisms": true,
+    "include": [
+     "viernes"
+    ],
+    "include_any": [
+     "reunión",
+     "llamada",
+     "videollamada",
+     "conversación"
+    ],
+    "language": "es"
+   },
+   "reference": "El director general hará una videollamada con los interesados para revisar el objetivo del trimestre y presentar el informe en el taller del viernes.",
+   "tags": [
+    "anglicismos"
+   ]
+  },
+  {
+   "title": "Lista de exactamente tres consejos",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Escribe exactamente 3 consejos para dormir mejor, como lista con guiones. Cada consejo debe tener menos de 15 palabras. No escribas introducción ni conclusión."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_bullets": 3,
+    "max_bullet_words": 14,
+    "language": "es"
+   },
+   "reference": "- Acuéstate y levántate siempre a la misma hora.\n- Evita las pantallas durante la hora previa a dormir.\n- Mantén el dormitorio oscuro, silencioso y fresco.",
+   "tags": [
+    "restricciones",
+    "listas"
+   ]
+  },
+  {
+   "title": "Titular de noticia sin comillas ni punto",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Escribe un titular de noticia de como máximo 10 palabras sobre la apertura de una biblioteca en un pueblo. Sin comillas y sin punto final. Devuelve solo el titular."
+   },
+   "checker": {
+    "type": "constraints",
+    "max_words": 10,
+    "include": [
+     "biblioteca"
+    ],
+    "forbid_regex": [
+     "\\.\\s*$",
+     "[\"“”«»]"
+    ],
+    "language": "es"
+   },
+   "reference": "Abre una biblioteca en el pueblo tras veinte años",
+   "tags": [
+    "restricciones"
+   ]
+  },
+  {
+   "title": "Tres párrafos con estructura fija",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Escribe un texto de exactamente 3 párrafos, separados por una línea en blanco, sobre por qué conviene leer cada día. El primer párrafo debe empezar por «En primer lugar» y el texto completo debe terminar con un punto. No uses listas ni títulos."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_paragraphs": 3,
+    "starts_with": "En primer lugar",
+    "ends_with": ".",
+    "no_bullets": true,
+    "language": "es"
+   },
+   "reference": "En primer lugar, leer a diario entrena la atención y amplía el vocabulario sin que nos demos cuenta.\n\nAdemás, la lectura reduce el estrés: media hora con un buen libro desconecta de las pantallas y de las preocupaciones.\n\nPor último, quien lee cada día descubre ideas nuevas y acaba escribiendo y hablando con más precisión.",
+   "tags": [
+    "estructura"
+   ]
+  },
+  {
+   "title": "Carta de reclamación",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Redacta una carta breve (de 80 a 120 palabras) dirigida a una tienda online que entregó una lavadora con la puerta rota. Pide la sustitución del aparato en un plazo de 10 días. Registro formal, tratando de usted. Empieza por «Muy señores míos:»."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "min_words": 80,
+      "max_words": 120,
+      "starts_with": "Muy señores míos",
+      "include": [
+       "lavadora",
+       "10 días"
+      ],
+      "language": "es"
+     },
+     {
+      "type": "judge",
+      "rubric": "La carta es formal y trata de usted; describe el problema (puerta rota), pide la sustitución en 10 días, es cortés pero firme y no tiene faltas de ortografía."
+     }
+    ]
+   },
+   "reference": "Muy señores míos:\n\nEl pasado 12 de septiembre recibí la lavadora que adquirí en su tienda con el pedido número 4471. Al desembalarla comprobé que la puerta del tambor estaba rota, por lo que el aparato no puede utilizarse. Adjunto fotografías del daño y del embalaje.\n\nLes solicito que sustituyan la lavadora por una unidad en perfecto estado en un plazo de 10 días desde la recepción de esta carta. De no ser posible, me veré obligado a reclamar la devolución del importe. Quedo a la espera de su respuesta.\n\nAtentamente,\nJuan Pérez",
+   "weight": 2.0,
+   "tags": [
+    "carta",
+    "registro",
+    "juez"
+   ],
+   "notes": "El criterio automático comprueba lo medible; la rúbrica del juez, si hay uno configurado, valora la calidad."
+  },
+  {
+   "title": "Convertir una queja airada en un mensaje cortés",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Reescribe este mensaje de forma cortés y firme, sin insultos ni sarcasmo, conservando la petición. Devuelve solo el mensaje.\n\n«Esto es una vergüenza, sois unos inútiles. Llevo tres semanas esperando el reembolso y nadie me contesta. Devolvedme el dinero YA o me voy a otra empresa.»"
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exclude": [
+       "vergüenza",
+       "inútiles",
+       "ya"
+      ],
+      "include_any": [
+       "reembolso",
+       "devolución",
+       "devolver"
+      ],
+      "include": [
+       "tres semanas"
+      ],
+      "language": "es"
+     },
+     {
+      "type": "judge",
+      "rubric": "El mensaje es educado y firme, no contiene insultos ni sarcasmo, mantiene la petición de reembolso tras tres semanas de espera y menciona la posibilidad de cambiar de empresa o una consecuencia razonable."
+     }
+    ]
+   },
+   "reference": "Buenas tardes. Llevo tres semanas esperando el reembolso de mi pedido y no he recibido respuesta. Les agradecería que lo tramitaran cuanto antes; de lo contrario tendré que plantearme cambiar de proveedor. Gracias.",
+   "weight": 2.0,
+   "tags": [
+    "registro",
+    "tono",
+    "juez"
+   ],
+   "notes": "El criterio automático comprueba lo medible; la rúbrica del juez, si hay uno configurado, valora la calidad."
+  },
+  {
+   "title": "Explicar la fotosíntesis a un niño",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Explica la fotosíntesis a un niño de 8 años en un máximo de 60 palabras. Menciona la luz del sol y no uses la palabra «clorofila»."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "max_words": 60,
+      "include": [
+       "luz"
+      ],
+      "exclude": [
+       "clorofila"
+      ],
+      "language": "es"
+     },
+     {
+      "type": "judge",
+      "rubric": "La explicación es correcta (las plantas usan la luz, el agua y el aire para fabricar su alimento y sueltan oxígeno), clara y adecuada para un niño de 8 años."
+     }
+    ]
+   },
+   "reference": "Las plantas son como cocineras: con la luz del sol, el agua que beben por las raíces y el aire que respiran fabrican su propio alimento. Y mientras cocinan, sueltan el oxígeno que nosotros respiramos.",
+   "tags": [
+    "explicación",
+    "juez"
+   ],
+   "notes": "El criterio automático comprueba lo medible; la rúbrica del juez, si hay uno configurado, valora la calidad."
+  },
+  {
+   "title": "Cuatro sinónimos separados por comas",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Da exactamente cuatro sinónimos de la palabra «rápido», en minúsculas, separados por comas y sin ninguna otra palabra ni signo."
+   },
+   "checker": {
+    "type": "regex",
+    "pattern": "^\\s*[a-záéíóúüñ]+(?:\\s*,\\s*[a-záéíóúüñ]+){3}\\s*$",
+    "mode": "fullmatch"
+   },
+   "reference": "veloz, ligero, ágil, presto",
+   "tags": [
+    "restricciones",
+    "léxico"
+   ]
+  },
+  {
+   "title": "Frase de ocho palabras exactas",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Escribe una frase de exactamente 8 palabras sobre el mar. Devuelve solo la frase."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_words": 8,
+    "exact_sentences": 1,
+    "language": "es"
+   },
+   "reference": "El mar murmura secretos antiguos a la luna.",
+   "tags": [
+    "restricciones"
+   ]
+  },
+  {
+   "title": "Frase sin la letra «e»",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Escribe una frase de al menos 8 palabras en castellano que no contenga la letra «e» (ni mayúscula ni minúscula, ni con tilde). Devuelve solo la frase."
+   },
+   "checker": {
+    "type": "constraints",
+    "min_words": 8,
+    "forbid_regex": [
+     "[eEéÉ]"
+    ],
+    "language": "es"
+   },
+   "reference": "Hoy vamos a mirar la luna y a cantar bajo ramas.",
+   "tags": [
+    "restricciones",
+    "juego"
+   ]
+  },
+  {
+   "title": "Significado de una expresión",
+   "prompt": {
+    "system": "Eres un asistente que escribe en castellano de España. Sigue las instrucciones al pie de la letra y no añadas explicaciones que no se pidan.",
+    "text": "Explica en una sola frase qué significa la expresión «estar en las nubes». No pongas ejemplos."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exact_sentences": 1,
+      "max_words": 30,
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "any": [
+       "distra",
+       "despist",
+       "soñ",
+       "ensimism",
+       "atenci",
+       "enterar",
+       "pensand"
+      ]
+     },
+     {
+      "type": "judge",
+      "rubric": "La frase explica correctamente que estar en las nubes es estar distraído o ensimismado, sin enterarse de lo que pasa alrededor."
+     }
+    ]
+   },
+   "reference": "Estar en las nubes significa estar distraído y ajeno a lo que ocurre alrededor.",
+   "tags": [
+    "léxico",
+    "juez"
+   ],
+   "notes": "El criterio automático comprueba lo medible; la rúbrica del juez, si hay uno configurado, valora la calidad."
+  }
+ ]
+}

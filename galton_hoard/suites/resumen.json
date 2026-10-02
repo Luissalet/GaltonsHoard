@@ -1,0 +1,341 @@
+{
+ "id": "resumen",
+ "name": "Resumen",
+ "description": "Resumir textos en un número fijo de viñetas conservando cifras y nombres.",
+ "category": "summary",
+ "version": 1,
+ "max_tokens": 450,
+ "position": 10,
+ "cases": [
+  {
+   "title": "Obras en el centro de salud",
+   "prompt": {
+    "system": "Eres un asistente que resume textos con fidelidad: no inventas datos y conservas cifras, nombres y fechas. Respondes solo con el resumen.",
+    "text": "Resume el texto siguiente en exactamente 3 viñetas (con guion), de como máximo 25 palabras cada una. Conserva las cifras y los nombres propios importantes.\n\nEl centro de salud de San Lorenzo cerrará su ala norte del 6 al 31 de octubre por obras de accesibilidad. Durante ese tiempo, las consultas de pediatría se trasladarán a la planta baja del ala sur y las de análisis clínicos se harán en el consultorio de Santa Ana, de 7:30 a 10:00. El proyecto, con un coste de 310.000 euros, instalará dos ascensores y rampas en todas las entradas. La gerencia pide a los pacientes que consulten el calendario actualizado en la web del centro."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exact_bullets": 3,
+      "max_bullet_words": 25,
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "all": [
+       "6",
+       "31 de octubre",
+       "310.000"
+      ]
+     }
+    ]
+   },
+   "reference": "- El ala norte del centro de salud de San Lorenzo cierra del 6 al 31 de octubre por obras de accesibilidad.\n- Pediatría pasa al ala sur y los análisis, al consultorio de Santa Ana de 7:30 a 10:00.\n- Las obras cuestan 310.000 euros e instalarán dos ascensores y rampas.",
+   "tags": [
+    "resumen",
+    "noticia"
+   ],
+   "max_tokens": 450
+  },
+  {
+   "title": "Resultados de una empresa",
+   "prompt": {
+    "system": "Eres un asistente que resume textos con fidelidad: no inventas datos y conservas cifras, nombres y fechas. Respondes solo con el resumen.",
+    "text": "Resume el texto siguiente en exactamente 4 viñetas (con guion), de como máximo 25 palabras cada una. Conserva las cifras y los nombres propios importantes.\n\nLa cooperativa Agroduero cerró 2024 con una facturación de 52 millones de euros, un 8 % más que en 2023, y un beneficio neto de 3,1 millones. Las exportaciones, sobre todo de legumbres y vino, representaron el 35 % de las ventas. La plantilla creció hasta 214 personas tras abrir un nuevo almacén en Toro. Para 2025 prevé invertir 4 millones en una planta de envasado y mantener el reparto del 40 % del beneficio entre los socios."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exact_bullets": 4,
+      "max_bullet_words": 25,
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "all": [
+       "52 millones",
+       "3,1 millones",
+       "214",
+       "4 millones"
+      ]
+     },
+     {
+      "type": "judge",
+      "rubric": "El resumen es fiel al texto, no añade información que no esté en él, y cada viñeta es clara e independiente."
+     }
+    ]
+   },
+   "reference": "- Agroduero facturó 52 millones de euros en 2024 (un 8 % más) con un beneficio neto de 3,1 millones.\n- Las exportaciones de legumbres y vino supusieron el 35 % de las ventas.\n- La plantilla subió a 214 personas con el nuevo almacén de Toro.\n- Para 2025 invertirá 4 millones en una planta de envasado y repartirá el 40 % del beneficio.",
+   "tags": [
+    "resumen",
+    "empresa"
+   ],
+   "max_tokens": 450
+  },
+  {
+   "title": "Cambio de normativa de residuos",
+   "prompt": {
+    "system": "Eres un asistente que resume textos con fidelidad: no inventas datos y conservas cifras, nombres y fechas. Respondes solo con el resumen.",
+    "text": "Resume el texto siguiente en exactamente 3 viñetas (con guion), de como máximo 25 palabras cada una. Conserva las cifras y los nombres propios importantes.\n\nA partir del 1 de enero, los hogares del municipio de Valdemora deberán separar el residuo orgánico en un contenedor marrón. El ayuntamiento repartirá gratis un cubo de cocina y bolsas compostables durante el primer semestre. Quien incumpla la norma podrá recibir una multa de entre 50 y 300 euros, pero durante los tres primeros meses solo habrá avisos. La recogida del orgánico será diaria en el centro y tres veces por semana en las urbanizaciones."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exact_bullets": 3,
+      "max_bullet_words": 25,
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "all": [
+       "1 de enero",
+       "marrón",
+       "300"
+      ]
+     }
+    ]
+   },
+   "reference": "- Desde el 1 de enero, el residuo orgánico de Valdemora irá en un contenedor marrón.\n- El ayuntamiento reparte gratis cubos y bolsas compostables durante el primer semestre.\n- Las multas serán de 50 a 300 euros, tras tres meses solo de avisos.",
+   "tags": [
+    "resumen",
+    "normativa"
+   ],
+   "max_tokens": 450
+  },
+  {
+   "title": "Historia de un edificio",
+   "prompt": {
+    "system": "Eres un asistente que resume textos con fidelidad: no inventas datos y conservas cifras, nombres y fechas. Respondes solo con el resumen.",
+    "text": "Resume el texto siguiente en exactamente 3 viñetas (con guion), de como máximo 25 palabras cada una. Conserva las cifras y los nombres propios importantes.\n\nEl Teatro Calderón de Medina fue inaugurado en 1887 y diseñado por el arquitecto Rafael Lozano. Tras un incendio en 1936 permaneció cerrado hasta 1961. En 1999 se restauró su fachada y en 2015 se instaló una nueva maquinaria escénica. Hoy tiene 640 butacas y programa unas 120 funciones al año."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exact_bullets": 3,
+      "max_bullet_words": 25,
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "all": [
+       "1887",
+       "Rafael Lozano",
+       "640"
+      ]
+     }
+    ]
+   },
+   "reference": "- El Teatro Calderón de Medina se inauguró en 1887, obra del arquitecto Rafael Lozano.\n- Un incendio en 1936 lo cerró hasta 1961; su fachada se restauró en 1999 y la maquinaria se renovó en 2015.\n- Tiene 640 butacas y unas 120 funciones al año.",
+   "tags": [
+    "resumen",
+    "historia"
+   ],
+   "max_tokens": 450
+  },
+  {
+   "title": "Consejos de ciberseguridad",
+   "prompt": {
+    "system": "Eres un asistente que resume textos con fidelidad: no inventas datos y conservas cifras, nombres y fechas. Respondes solo con el resumen.",
+    "text": "Resume el texto siguiente en exactamente 4 viñetas (con guion), de como máximo 18 palabras cada una. Conserva las cifras y los nombres propios importantes.\n\nLos expertos recomiendan activar la verificación en dos pasos en todas las cuentas importantes, empezando por el correo. También aconsejan usar un gestor de contraseñas para tener claves largas y distintas en cada servicio, y desconfiar de los mensajes que piden datos con urgencia. Por último, conviene instalar las actualizaciones del sistema en cuanto estén disponibles y hacer copias de seguridad al menos una vez al mes."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exact_bullets": 4,
+      "max_bullet_words": 18,
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "all": [
+       "verificación en dos pasos",
+       "gestor de contraseñas",
+       "una vez al mes"
+      ]
+     }
+    ]
+   },
+   "reference": "- Activar la verificación en dos pasos, empezando por el correo.\n- Usar un gestor de contraseñas con claves largas y distintas.\n- Desconfiar de los mensajes que piden datos con urgencia.\n- Instalar las actualizaciones enseguida y hacer copias de seguridad al menos una vez al mes.",
+   "tags": [
+    "resumen",
+    "consejos"
+   ],
+   "max_tokens": 450
+  },
+  {
+   "title": "Acta de una reunión",
+   "prompt": {
+    "system": "Eres un asistente que resume textos con fidelidad: no inventas datos y conservas cifras, nombres y fechas. Respondes solo con el resumen.",
+    "text": "Resume el texto siguiente en exactamente 4 viñetas (con guion), de como máximo 25 palabras cada una. Conserva las cifras y los nombres propios importantes.\n\nEn la reunión del 18 de septiembre, el comité acordó adelantar el lanzamiento de la aplicación móvil del 15 de noviembre al 3 de noviembre. Paula Ibáñez se encargará de las pruebas finales y Raúl Cobos de la comunicación a clientes. Se aprobó un gasto adicional de 8.500 euros para reforzar el servidor. Quedó pendiente decidir si se ofrece un periodo de prueba gratuito; se votará el 25 de septiembre."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exact_bullets": 4,
+      "max_bullet_words": 25,
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "all": [
+       "3 de noviembre",
+       "Paula Ibáñez",
+       "8.500",
+       "25 de septiembre"
+      ]
+     }
+    ]
+   },
+   "reference": "- Se adelanta el lanzamiento de la aplicación del 15 al 3 de noviembre.\n- Paula Ibáñez hará las pruebas finales y Raúl Cobos la comunicación a clientes.\n- Se aprueban 8.500 euros extra para reforzar el servidor.\n- El periodo de prueba gratuito se votará el 25 de septiembre.",
+   "tags": [
+    "resumen",
+    "acta"
+   ],
+   "max_tokens": 450
+  },
+  {
+   "title": "Divulgación científica",
+   "prompt": {
+    "system": "Eres un asistente que resume textos con fidelidad: no inventas datos y conservas cifras, nombres y fechas. Respondes solo con el resumen.",
+    "text": "Resume el texto siguiente en exactamente 3 viñetas (con guion), de como máximo 30 palabras cada una. Conserva las cifras y los nombres propios importantes.\n\nUn equipo de la Universidad de Granada ha medido por primera vez la temperatura del suelo de una cueva de la Sierra Nevada durante cinco años. Descubrieron que, a diez metros de profundidad, la variación anual es inferior a 0,5 grados, lo que convierte a estas cuevas en refugios estables para insectos que desaparecen en la superficie durante los veranos más calurosos. El estudio se ha publicado esta semana en una revista de ecología."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exact_bullets": 3,
+      "max_bullet_words": 30,
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "all": [
+       "cinco años",
+       "0,5",
+       "Granada"
+      ]
+     },
+     {
+      "type": "judge",
+      "rubric": "El resumen es fiel al texto, no añade información que no esté en él, y cada viñeta es clara e independiente."
+     }
+    ]
+   },
+   "reference": "- Un equipo de la Universidad de Granada midió durante cinco años la temperatura del suelo de una cueva de Sierra Nevada.\n- A diez metros de profundidad varía menos de 0,5 grados al año.\n- Esas cuevas sirven de refugio a insectos que desaparecen de la superficie en veranos muy calurosos.",
+   "tags": [
+    "resumen",
+    "ciencia"
+   ],
+   "max_tokens": 450
+  },
+  {
+   "title": "Política de devoluciones",
+   "prompt": {
+    "system": "Eres un asistente que resume textos con fidelidad: no inventas datos y conservas cifras, nombres y fechas. Respondes solo con el resumen.",
+    "text": "Resume el texto siguiente en exactamente 3 viñetas (con guion), de como máximo 25 palabras cada una. Conserva las cifras y los nombres propios importantes.\n\nLos clientes pueden devolver cualquier producto sin usar en un plazo de 30 días desde la compra, con el ticket o la factura. El reembolso se hace en el mismo medio de pago en un máximo de 7 días laborables. Los productos personalizados y los de higiene personal abiertos no admiten devolución. Los gastos de envío de la devolución corren a cargo del cliente salvo que el producto llegue defectuoso."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exact_bullets": 3,
+      "max_bullet_words": 25,
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "all": [
+       "30 días",
+       "7 días",
+       "defectuoso"
+      ]
+     }
+    ]
+   },
+   "reference": "- Se admiten devoluciones de productos sin usar en 30 días, con ticket o factura.\n- El reembolso llega por el mismo medio de pago en un máximo de 7 días laborables.\n- No se devuelven los personalizados ni los de higiene abiertos, y el envío lo paga el cliente salvo producto defectuoso.",
+   "tags": [
+    "resumen",
+    "política"
+   ],
+   "max_tokens": 450
+  },
+  {
+   "title": "Ruta de senderismo",
+   "prompt": {
+    "system": "Eres un asistente que resume textos con fidelidad: no inventas datos y conservas cifras, nombres y fechas. Respondes solo con el resumen.",
+    "text": "Resume el texto siguiente en exactamente 3 viñetas (con guion), de como máximo 28 palabras cada una. Conserva las cifras y los nombres propios importantes.\n\nLa ruta de las Hoces del Riaza recorre 14 kilómetros entre Montejo y Maderuelo, con un desnivel acumulado de 380 metros. Se tarda unas cinco horas y está señalizada con marcas blancas y amarillas. Entre febrero y agosto hay zonas cerradas por la nidificación de los buitres leonados. No hay fuentes en el recorrido, por lo que se aconseja llevar al menos dos litros de agua."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exact_bullets": 3,
+      "max_bullet_words": 28,
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "all": [
+       "14 kilómetros",
+       "380",
+       "dos litros"
+      ]
+     }
+    ]
+   },
+   "reference": "- La ruta de las Hoces del Riaza va de Montejo a Maderuelo: 14 kilómetros, 380 metros de desnivel y unas cinco horas.\n- Entre febrero y agosto hay zonas cerradas por la nidificación de buitres leonados.\n- No hay fuentes: se aconseja llevar dos litros de agua.",
+   "tags": [
+    "resumen",
+    "viaje"
+   ],
+   "max_tokens": 450
+  },
+  {
+   "title": "Reseña de una película",
+   "prompt": {
+    "system": "Eres un asistente que resume textos con fidelidad: no inventas datos y conservas cifras, nombres y fechas. Respondes solo con el resumen.",
+    "text": "Resume el texto siguiente en exactamente 3 viñetas (con guion), de como máximo 22 palabras cada una. Conserva las cifras y los nombres propios importantes.\n\nLa película «El faro de cristal», dirigida por Inés Montalvo, narra la vida de una farera en la costa gallega durante los años cuarenta. La crítica elogia la fotografía de Tomás Reig y la interpretación de Clara Núñez, pero considera que el último tercio se alarga demasiado. Dura 128 minutos, se estrenó el 12 de septiembre y ya ha superado los 400.000 espectadores."
+   },
+   "checker": {
+    "type": "all",
+    "checks": [
+     {
+      "type": "constraints",
+      "exact_bullets": 3,
+      "max_bullet_words": 22,
+      "language": "es"
+     },
+     {
+      "type": "contains",
+      "all": [
+       "Inés Montalvo",
+       "128 minutos",
+       "400.000"
+      ]
+     }
+    ]
+   },
+   "reference": "- «El faro de cristal», de Inés Montalvo, cuenta la vida de una farera gallega en los años cuarenta.\n- La crítica alaba la fotografía de Tomás Reig y a Clara Núñez, pero ve alargado el último tercio.\n- Dura 128 minutos, se estrenó el 12 de septiembre y supera los 400.000 espectadores.",
+   "tags": [
+    "resumen",
+    "reseña"
+   ],
+   "max_tokens": 450
+  }
+ ]
+}

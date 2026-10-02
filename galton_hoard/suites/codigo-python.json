@@ -1,0 +1,549 @@
+{
+ "id": "codigo-python",
+ "name": "Código Python",
+ "description": "Funciones pequeñas con pruebas ocultas: casos normales y casos límite. El código se ejecuta en un proceso aislado.",
+ "category": "code",
+ "version": 1,
+ "max_tokens": 1200,
+ "position": 4,
+ "cases": [
+  {
+   "title": "FizzBuzz como lista",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `fizzbuzz(n)` que devuelva una lista con los números del 1 al n convertidos en cadenas, sustituyendo los múltiplos de 3 por \"Fizz\", los de 5 por \"Buzz\" y los de ambos por \"FizzBuzz\". Para n = 0 devuelve una lista vacía.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "fizzbuzz",
+    "tests": [
+     "assert fizzbuzz(5) == ['1', '2', 'Fizz', '4', 'Buzz']",
+     "assert fizzbuzz(15)[-1] == 'FizzBuzz'",
+     "assert fizzbuzz(0) == []",
+     "assert fizzbuzz(1) == ['1']",
+     "assert fizzbuzz(30).count('FizzBuzz') == 2"
+    ]
+   },
+   "reference": "```python\ndef fizzbuzz(n):\n    out = []\n    for i in range(1, n + 1):\n        if i % 15 == 0:\n            out.append(\"FizzBuzz\")\n        elif i % 3 == 0:\n            out.append(\"Fizz\")\n        elif i % 5 == 0:\n            out.append(\"Buzz\")\n        else:\n            out.append(str(i))\n    return out\n```",
+   "tags": [
+    "python",
+    "básico"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Palíndromo ignorando signos",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `es_palindromo(texto)` que devuelva True si el texto es un palíndromo ignorando mayúsculas, espacios y signos de puntuación (solo cuentan letras y dígitos). Una cadena vacía es palíndromo.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "es_palindromo",
+    "tests": [
+     "assert es_palindromo('Anita lava la tina') is True",
+     "assert es_palindromo('A man, a plan, a canal: Panama') is True",
+     "assert es_palindromo('hola') is False",
+     "assert es_palindromo('') is True",
+     "assert es_palindromo('¡Atar a la rata!') is True",
+     "assert es_palindromo('12321') is True",
+     "assert es_palindromo('12345') is False"
+    ]
+   },
+   "reference": "```python\ndef es_palindromo(texto):\n    limpio = [c.lower() for c in texto if c.isalnum()]\n    return limpio == limpio[::-1]\n```",
+   "tags": [
+    "python",
+    "cadenas"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Fibonacci con validación",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `fibonacci(n)` que devuelva el n-ésimo número de Fibonacci con fibonacci(0) = 0 y fibonacci(1) = 1. Debe ser eficiente (n puede valer 5000). Si n es negativo lanza ValueError.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "fibonacci",
+    "tests": [
+     "assert fibonacci(0) == 0",
+     "assert fibonacci(1) == 1",
+     "assert fibonacci(10) == 55",
+     "assert fibonacci(50) == 12586269025",
+     "assert len(str(fibonacci(5000))) == 1045",
+     "try:\n    fibonacci(-1)\n    raise SystemExit('no ValueError')\nexcept ValueError:\n    pass"
+    ]
+   },
+   "reference": "```python\ndef fibonacci(n):\n    if n < 0:\n        raise ValueError(\"n must be >= 0\")\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return a\n```",
+   "tags": [
+    "python",
+    "algoritmos",
+    "bordes"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Aplanar listas anidadas",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `aplanar(estructura)` que reciba listas anidadas a cualquier profundidad y devuelva una lista plana con los elementos en el mismo orden. Las cadenas no se descomponen en caracteres. Una lista vacía devuelve una lista vacía.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "aplanar",
+    "tests": [
+     "assert aplanar([1, [2, [3, [4]], 5]]) == [1, 2, 3, 4, 5]",
+     "assert aplanar([]) == []",
+     "assert aplanar([[], [[]]]) == []",
+     "assert aplanar(['ab', ['cd']]) == ['ab', 'cd']",
+     "assert aplanar([1, 2, 3]) == [1, 2, 3]",
+     "assert aplanar([[1, 2], [3, [4, [5, [6]]]]]) == [1, 2, 3, 4, 5, 6]"
+    ]
+   },
+   "reference": "```python\ndef aplanar(estructura):\n    salida = []\n    for item in estructura:\n        if isinstance(item, list):\n            salida.extend(aplanar(item))\n        else:\n            salida.append(item)\n    return salida\n```",
+   "tags": [
+    "python",
+    "recursión"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Contar palabras",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `contar_palabras(texto)` que devuelva un diccionario {palabra: veces} pasando todo a minúsculas e ignorando los signos de puntuación (.,;:!?¡¿\"()). Las palabras se separan por espacios en blanco. Un texto vacío devuelve {}.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "contar_palabras",
+    "tests": [
+     "assert contar_palabras('Hola, hola mundo') == {'hola': 2, 'mundo': 1}",
+     "assert contar_palabras('') == {}",
+     "assert contar_palabras('¿Qué? ¡Qué!') == {'qué': 2}",
+     "assert contar_palabras('  a   b  a ') == {'a': 2, 'b': 1}",
+     "assert contar_palabras('(uno) dos; Uno.') == {'uno': 2, 'dos': 1}"
+    ]
+   },
+   "reference": "```python\ndef contar_palabras(texto):\n    quitar = '.,;:!?¡¿\"()'\n    cuenta = {}\n    for palabra in texto.lower().split():\n        palabra = palabra.strip(quitar)\n        if palabra:\n            cuenta[palabra] = cuenta.get(palabra, 0) + 1\n    return cuenta\n```",
+   "tags": [
+    "python",
+    "cadenas",
+    "diccionarios"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Fusionar intervalos",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `fusionar_intervalos(intervalos)` que reciba una lista de pares [inicio, fin] (no necesariamente ordenados) y devuelva la lista de intervalos fusionados y ordenados, como listas de dos elementos. Los intervalos que se tocan en un extremo (por ejemplo [1,3] y [3,5]) se fusionan. Una lista vacía devuelve [].\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "fusionar_intervalos",
+    "tests": [
+     "assert fusionar_intervalos([[1, 3], [2, 6], [8, 10], [15, 18]]) == [[1, 6], [8, 10], [15, 18]]",
+     "assert fusionar_intervalos([[1, 3], [3, 5]]) == [[1, 5]]",
+     "assert fusionar_intervalos([]) == []",
+     "assert fusionar_intervalos([[5, 6], [1, 2]]) == [[1, 2], [5, 6]]",
+     "assert fusionar_intervalos([[1, 10], [2, 3]]) == [[1, 10]]",
+     "assert fusionar_intervalos([[4, 4]]) == [[4, 4]]"
+    ]
+   },
+   "reference": "```python\ndef fusionar_intervalos(intervalos):\n    resultado = []\n    for inicio, fin in sorted(intervalos):\n        if resultado and inicio <= resultado[-1][1]:\n            resultado[-1][1] = max(resultado[-1][1], fin)\n        else:\n            resultado.append([inicio, fin])\n    return resultado\n```",
+   "tags": [
+    "python",
+    "algoritmos",
+    "bordes"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Números romanos a entero",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `romano_a_entero(s)` que convierta un número romano válido (hasta 3999, en mayúsculas) en entero, aplicando la regla sustractiva (IV = 4, IX = 9, XL = 40, XC = 90, CD = 400, CM = 900).\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "romano_a_entero",
+    "tests": [
+     "assert romano_a_entero('III') == 3",
+     "assert romano_a_entero('IV') == 4",
+     "assert romano_a_entero('IX') == 9",
+     "assert romano_a_entero('LVIII') == 58",
+     "assert romano_a_entero('MCMXCIV') == 1994",
+     "assert romano_a_entero('MMMCMXCIX') == 3999"
+    ]
+   },
+   "reference": "```python\ndef romano_a_entero(s):\n    valores = {\"I\": 1, \"V\": 5, \"X\": 10, \"L\": 50, \"C\": 100, \"D\": 500, \"M\": 1000}\n    total = 0\n    for i, c in enumerate(s):\n        v = valores[c]\n        if i + 1 < len(s) and valores[s[i + 1]] > v:\n            total -= v\n        else:\n            total += v\n    return total\n```",
+   "tags": [
+    "python",
+    "algoritmos"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Entero a números romanos",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `entero_a_romano(n)` que convierta un entero entre 1 y 3999 en su número romano en mayúsculas. Si n está fuera de ese rango lanza ValueError.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "entero_a_romano",
+    "tests": [
+     "assert entero_a_romano(4) == 'IV'",
+     "assert entero_a_romano(1994) == 'MCMXCIV'",
+     "assert entero_a_romano(3999) == 'MMMCMXCIX'",
+     "assert entero_a_romano(1) == 'I'",
+     "assert entero_a_romano(444) == 'CDXLIV'",
+     "try:\n    entero_a_romano(0)\n    raise SystemExit('no ValueError')\nexcept ValueError:\n    pass",
+     "try:\n    entero_a_romano(4000)\n    raise SystemExit('no ValueError')\nexcept ValueError:\n    pass"
+    ]
+   },
+   "reference": "```python\ndef entero_a_romano(n):\n    if not 1 <= n <= 3999:\n        raise ValueError(\"fuera de rango\")\n    tabla = [(1000, \"M\"), (900, \"CM\"), (500, \"D\"), (400, \"CD\"), (100, \"C\"), (90, \"XC\"), (50, \"L\"), (40, \"XL\"), (10, \"X\"), (9, \"IX\"), (5, \"V\"), (4, \"IV\"), (1, \"I\")]\n    salida = []\n    for valor, simbolo in tabla:\n        while n >= valor:\n            salida.append(simbolo)\n            n -= valor\n    return \"\".join(salida)\n```",
+   "tags": [
+    "python",
+    "algoritmos",
+    "bordes"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Paréntesis balanceados",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `balanceado(s)` que devuelva True si los paréntesis (), corchetes [] y llaves {} de la cadena están correctamente emparejados y anidados. Los demás caracteres se ignoran. La cadena vacía está balanceada.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "balanceado",
+    "tests": [
+     "assert balanceado('([]{})') is True",
+     "assert balanceado('([)]') is False",
+     "assert balanceado('') is True",
+     "assert balanceado('((') is False",
+     "assert balanceado('))((') is False",
+     "assert balanceado('f(x[1]) + {a: (b)}') is True",
+     "assert balanceado(']') is False"
+    ]
+   },
+   "reference": "```python\ndef balanceado(s):\n    pares = {\")\": \"(\", \"]\": \"[\", \"}\": \"{\"}\n    pila = []\n    for c in s:\n        if c in \"([{\":\n            pila.append(c)\n        elif c in pares:\n            if not pila or pila.pop() != pares[c]:\n                return False\n    return not pila\n```",
+   "tags": [
+    "python",
+    "estructuras de datos"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Dos sumandos de un objetivo",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `dos_sumas(nums, objetivo)` que devuelva una tupla (i, j) con i < j de los índices de dos elementos distintos de la lista cuya suma sea `objetivo`. Si no existe ningún par devuelve None. Siempre habrá como mucho una solución.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "dos_sumas",
+    "tests": [
+     "assert dos_sumas([2, 7, 11, 15], 9) == (0, 1)",
+     "assert dos_sumas([3, 2, 4], 6) == (1, 2)",
+     "assert dos_sumas([3, 3], 6) == (0, 1)",
+     "assert dos_sumas([1, 2, 3], 10) is None",
+     "assert dos_sumas([], 0) is None",
+     "assert dos_sumas([5], 10) is None"
+    ]
+   },
+   "reference": "```python\ndef dos_sumas(nums, objetivo):\n    vistos = {}\n    for j, x in enumerate(nums):\n        i = vistos.get(objetivo - x)\n        if i is not None:\n            return (i, j)\n        vistos.setdefault(x, j)\n    return None\n```",
+   "tags": [
+    "python",
+    "algoritmos",
+    "bordes"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Trocear una lista",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `trocear(lista, tam)` que divida la lista en sublistas consecutivas de tamaño `tam` (la última puede ser más corta). Si tam es menor o igual que 0 lanza ValueError. No modifiques la lista original.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "trocear",
+    "tests": [
+     "assert trocear([1, 2, 3, 4, 5], 2) == [[1, 2], [3, 4], [5]]",
+     "assert trocear([], 3) == []",
+     "assert trocear([1, 2, 3], 5) == [[1, 2, 3]]",
+     "assert trocear([1, 2, 3, 4], 4) == [[1, 2, 3, 4]]",
+     "l = [1, 2, 3]\ntrocear(l, 2)\nassert l == [1, 2, 3]",
+     "try:\n    trocear([1], 0)\n    raise SystemExit('no ValueError')\nexcept ValueError:\n    pass"
+    ]
+   },
+   "reference": "```python\ndef trocear(lista, tam):\n    if tam <= 0:\n        raise ValueError(\"tam debe ser positivo\")\n    return [lista[i:i + tam] for i in range(0, len(lista), tam)]\n```",
+   "tags": [
+    "python",
+    "listas",
+    "bordes"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Segundo mayor distinto",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `segundo_mayor(nums)` que devuelva el segundo valor MÁS GRANDE DISTINTO de la lista de números (si el máximo se repite, no cuenta como segundo). Si hay menos de dos valores distintos devuelve None.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "segundo_mayor",
+    "tests": [
+     "assert segundo_mayor([1, 2, 3]) == 2",
+     "assert segundo_mayor([5, 5, 4]) == 4",
+     "assert segundo_mayor([7, 7]) is None",
+     "assert segundo_mayor([]) is None",
+     "assert segundo_mayor([-1, -5, -3]) == -3",
+     "assert segundo_mayor([2.5, 1.5, 2.5]) == 1.5"
+    ]
+   },
+   "reference": "```python\ndef segundo_mayor(nums):\n    distintos = sorted(set(nums), reverse=True)\n    return distintos[1] if len(distintos) >= 2 else None\n```",
+   "tags": [
+    "python",
+    "listas",
+    "bordes"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Cifrado César",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `cesar(texto, desplazamiento)` que desplace cada letra del alfabeto inglés (a-z, A-Z) el número de posiciones indicado, conservando mayúsculas/minúsculas. Los demás caracteres no cambian. El desplazamiento puede ser negativo o mayor que 26.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "cesar",
+    "tests": [
+     "assert cesar('abc', 1) == 'bcd'",
+     "assert cesar('xyz', 3) == 'abc'",
+     "assert cesar('Hola, Mundo!', 3) == 'Krod, Pxqgr!'",
+     "assert cesar('abc', -1) == 'zab'",
+     "assert cesar('abc', 27) == 'bcd'",
+     "assert cesar('', 5) == ''",
+     "assert cesar('ñ1 ', 4) == 'ñ1 '"
+    ]
+   },
+   "reference": "```python\ndef cesar(texto, desplazamiento):\n    salida = []\n    for c in texto:\n        if \"a\" <= c <= \"z\":\n            salida.append(chr((ord(c) - 97 + desplazamiento) % 26 + 97))\n        elif \"A\" <= c <= \"Z\":\n            salida.append(chr((ord(c) - 65 + desplazamiento) % 26 + 65))\n        else:\n            salida.append(c)\n    return \"\".join(salida)\n```",
+   "tags": [
+    "python",
+    "cadenas"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Anagramas",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `son_anagramas(a, b)` que devuelva True si las dos cadenas son anagramas ignorando mayúsculas y espacios. Dos cadenas iguales también cuentan como anagramas, salvo que ambas queden vacías tras quitar los espacios: en ese caso devuelve False.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "son_anagramas",
+    "tests": [
+     "assert son_anagramas('Roma', 'Amor') is True",
+     "assert son_anagramas('hola', 'halo ') is True",
+     "assert son_anagramas('abc', 'abd') is False",
+     "assert son_anagramas('', '') is False",
+     "assert son_anagramas('  ', ' ') is False",
+     "assert son_anagramas('aab', 'ab') is False",
+     "assert son_anagramas('Dormitory', 'dirty room') is True"
+    ]
+   },
+   "reference": "```python\ndef son_anagramas(a, b):\n    a = sorted(a.lower().replace(\" \", \"\"))\n    b = sorted(b.lower().replace(\" \", \"\"))\n    return bool(a) and a == b\n```",
+   "tags": [
+    "python",
+    "cadenas",
+    "bordes"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Búsqueda binaria",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `buscar(lista_ordenada, x)` que haga una búsqueda binaria en una lista de enteros ordenada de menor a mayor y sin repetidos, y devuelva el índice de x o -1 si no está. Debe funcionar con listas de un elemento y vacías.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "buscar",
+    "tests": [
+     "assert buscar([1, 3, 5, 7, 9], 7) == 3",
+     "assert buscar([1, 3, 5, 7, 9], 1) == 0",
+     "assert buscar([1, 3, 5, 7, 9], 9) == 4",
+     "assert buscar([1, 3, 5, 7, 9], 4) == -1",
+     "assert buscar([], 1) == -1",
+     "assert buscar([2], 2) == 0",
+     "assert buscar([2], 3) == -1",
+     "assert buscar(list(range(0, 100000, 2)), 99998) == 49999"
+    ]
+   },
+   "reference": "```python\ndef buscar(lista_ordenada, x):\n    lo, hi = 0, len(lista_ordenada) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if lista_ordenada[mid] == x:\n            return mid\n        if lista_ordenada[mid] < x:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1\n```",
+   "tags": [
+    "python",
+    "algoritmos",
+    "bordes"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Agrupar palabras por longitud",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `agrupar_por_longitud(palabras)` que devuelva un diccionario {longitud: lista de palabras de esa longitud}, con cada lista ordenada alfabéticamente y sin repetidos. Una lista vacía devuelve {}.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "agrupar_por_longitud",
+    "tests": [
+     "assert agrupar_por_longitud(['sol', 'mar', 'luz', 'cielo']) == {3: ['luz', 'mar', 'sol'], 5: ['cielo']}",
+     "assert agrupar_por_longitud([]) == {}",
+     "assert agrupar_por_longitud(['a', 'a', 'b']) == {1: ['a', 'b']}",
+     "assert agrupar_por_longitud(['', 'x']) == {0: [''], 1: ['x']}"
+    ]
+   },
+   "reference": "```python\ndef agrupar_por_longitud(palabras):\n    grupos = {}\n    for p in set(palabras):\n        grupos.setdefault(len(p), []).append(p)\n    return {k: sorted(v) for k, v in grupos.items()}\n```",
+   "tags": [
+    "python",
+    "diccionarios"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Duración a segundos",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `a_segundos(texto)` que convierta una duración como \"1h30m15s\", \"45s\" o \"2h\" en segundos (enteros). Las unidades válidas son h, m y s, cada una como mucho una vez y en ese orden. Si el formato no es válido (cadena vacía, unidad desconocida, orden incorrecto) lanza ValueError.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "a_segundos",
+    "tests": [
+     "assert a_segundos('1h30m15s') == 5415",
+     "assert a_segundos('45s') == 45",
+     "assert a_segundos('2h') == 7200",
+     "assert a_segundos('90m') == 5400",
+     "assert a_segundos('0s') == 0",
+     "for malo in ['', '10x', '5s1h', 'h', '1h1h', '12']:\n    try:\n        a_segundos(malo)\n    except ValueError:\n        continue\n    raise SystemExit('no ValueError para ' + repr(malo))"
+    ]
+   },
+   "reference": "```python\nimport re\n\ndef a_segundos(texto):\n    m = re.fullmatch(r\"(?:(\\d+)h)?(?:(\\d+)m)?(?:(\\d+)s)?\", texto)\n    if not texto or m is None:\n        raise ValueError(\"formato no válido\")\n    h, mi, s = (int(g) if g else 0 for g in m.groups())\n    return h * 3600 + mi * 60 + s\n```",
+   "tags": [
+    "python",
+    "parsing",
+    "bordes"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Compresión por repeticiones",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `comprimir(s)` que codifique una cadena por repeticiones consecutivas: \"aaabcc\" -> \"a3b1c2\" (cada carácter seguido de cuántas veces se repite seguidamente, incluso si es 1). La cadena vacía devuelve \"\".\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "comprimir",
+    "tests": [
+     "assert comprimir('aaabcc') == 'a3b1c2'",
+     "assert comprimir('') == ''",
+     "assert comprimir('a') == 'a1'",
+     "assert comprimir('abc') == 'a1b1c1'",
+     "assert comprimir('aabbaa') == 'a2b2a2'",
+     "assert comprimir('x' * 12) == 'x12'"
+    ]
+   },
+   "reference": "```python\ndef comprimir(s):\n    salida = []\n    i = 0\n    while i < len(s):\n        j = i\n        while j < len(s) and s[j] == s[i]:\n            j += 1\n        salida.append(f\"{s[i]}{j - i}\")\n        i = j\n    return \"\".join(salida)\n```",
+   "tags": [
+    "python",
+    "cadenas"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Transponer una matriz",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `transponer(m)` que reciba una matriz como lista de listas (todas las filas con la misma longitud) y devuelva su transpuesta como lista de listas. La matriz vacía [] devuelve []. Debe funcionar con matrices no cuadradas.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "transponer",
+    "tests": [
+     "assert transponer([[1, 2, 3], [4, 5, 6]]) == [[1, 4], [2, 5], [3, 6]]",
+     "assert transponer([]) == []",
+     "assert transponer([[1]]) == [[1]]",
+     "assert transponer([[1, 2], [3, 4]]) == [[1, 3], [2, 4]]",
+     "assert transponer([[1], [2], [3]]) == [[1, 2, 3]]"
+    ]
+   },
+   "reference": "```python\ndef transponer(m):\n    return [list(col) for col in zip(*m)]\n```",
+   "tags": [
+    "python",
+    "listas",
+    "bordes"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Mediana de una lista",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la función `mediana(nums)` que devuelva la mediana de una lista de números (la media de los dos centrales si la longitud es par). No modifiques la lista original. Si la lista está vacía lanza ValueError.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "mediana",
+    "tests": [
+     "assert mediana([3, 1, 2]) == 2",
+     "assert mediana([4, 1, 3, 2]) == 2.5",
+     "assert mediana([7]) == 7",
+     "assert mediana([-5, -1]) == -3",
+     "l = [3, 1, 2]\nmediana(l)\nassert l == [3, 1, 2]",
+     "try:\n    mediana([])\n    raise SystemExit('no ValueError')\nexcept ValueError:\n    pass"
+    ]
+   },
+   "reference": "```python\ndef mediana(nums):\n    if not nums:\n        raise ValueError(\"lista vacía\")\n    s = sorted(nums)\n    n = len(s)\n    mitad = n // 2\n    return s[mitad] if n % 2 else (s[mitad - 1] + s[mitad]) / 2\n```",
+   "tags": [
+    "python",
+    "estadística",
+    "bordes"
+   ],
+   "max_tokens": 900
+  },
+  {
+   "title": "Cache LRU sencilla",
+   "prompt": {
+    "system": "Eres un programador de Python experto. Responde solo con un bloque de código Python completo (```python) que defina lo que se pide, sin ejemplos de uso ni texto fuera del bloque. Usa solo la biblioteca estándar.",
+    "text": "Escribe la clase `LRU` con constructor `LRU(capacidad)` y los métodos `get(clave)` (devuelve el valor o None si no existe y marca la clave como usada recientemente) y `put(clave, valor)` (inserta o actualiza, marca como reciente, y si se supera la capacidad elimina la clave menos usada recientemente). Capacidad mínima 1.\n\nDevuelve únicamente el código."
+   },
+   "checker": {
+    "type": "python_tests",
+    "entry": "LRU",
+    "tests": [
+     "c = LRU(2)\nc.put('a', 1)\nc.put('b', 2)\nassert c.get('a') == 1\nc.put('c', 3)\nassert c.get('b') is None\nassert c.get('a') == 1\nassert c.get('c') == 3",
+     "c = LRU(1)\nc.put('x', 1)\nc.put('y', 2)\nassert c.get('x') is None and c.get('y') == 2",
+     "c = LRU(2)\nc.put('a', 1)\nc.put('b', 2)\nc.put('a', 10)\nc.put('c', 3)\nassert c.get('a') == 10 and c.get('b') is None",
+     "c = LRU(3)\nassert c.get('zzz') is None"
+    ]
+   },
+   "reference": "```python\nfrom collections import OrderedDict\n\nclass LRU:\n    def __init__(self, capacidad):\n        self.capacidad = capacidad\n        self._datos = OrderedDict()\n\n    def get(self, clave):\n        if clave not in self._datos:\n            return None\n        self._datos.move_to_end(clave)\n        return self._datos[clave]\n\n    def put(self, clave, valor):\n        self._datos[clave] = valor\n        self._datos.move_to_end(clave)\n        if len(self._datos) > self.capacidad:\n            self._datos.popitem(last=False)\n```",
+   "tags": [
+    "python",
+    "clases",
+    "estructuras de datos"
+   ],
+   "max_tokens": 900
+  }
+ ]
+}

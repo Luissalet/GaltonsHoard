@@ -1,0 +1,445 @@
+{
+ "id": "instrucciones",
+ "name": "Seguimiento de instrucciones",
+ "description": "Instrucciones con restricciones medibles: recuentos, palabras obligatorias o prohibidas, formato, idioma y JSON.",
+ "category": "instruction",
+ "version": 1,
+ "max_tokens": 500,
+ "position": 7,
+ "cases": [
+  {
+   "title": "Frase de exactamente 12 palabras",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Escribe una frase en castellano que tenga exactamente 12 palabras y hable del otoño. Solo la frase."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_words": 12,
+    "include": [
+     "otoño"
+    ],
+    "language": "es"
+   },
+   "reference": "El otoño llena las calles de hojas doradas y de silencio tranquilo.",
+   "tags": [
+    "restricciones",
+    "conteo"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Tres frases justas",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Describe una cocina en exactamente tres frases. Sin listas."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_sentences": 3,
+    "no_bullets": true,
+    "language": "es"
+   },
+   "reference": "La cocina es pequeña pero luminosa. Tiene una mesa de madera junto a la ventana. Siempre huele a pan recién hecho.",
+   "tags": [
+    "restricciones",
+    "conteo"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Cuatro viñetas con guion",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Enumera cuatro frutas de temporada en verano como lista con guiones, una por línea y sin nada más."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_bullets": 4,
+    "max_bullet_words": 3,
+    "language": "es"
+   },
+   "reference": "- Melocotón\n- Sandía\n- Albaricoque\n- Cereza",
+   "tags": [
+    "restricciones",
+    "listas"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Todo en mayúsculas",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Escribe un aviso de una sola línea que diga que la biblioteca cierra a las 20:00. Todo en MAYÚSCULAS."
+   },
+   "checker": {
+    "type": "constraints",
+    "case": "upper",
+    "include": [
+     "biblioteca"
+    ],
+    "exact_lines": 1
+   },
+   "reference": "LA BIBLIOTECA CIERRA A LAS 20:00.",
+   "tags": [
+    "restricciones",
+    "formato"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Todo en minúsculas",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Escribe un saludo informal de dos frases cortas, todo en minúsculas (también la primera letra y los nombres propios) y sin signos de exclamación."
+   },
+   "checker": {
+    "type": "constraints",
+    "case": "lower",
+    "exact_sentences": 2,
+    "forbid_regex": [
+     "!"
+    ],
+    "language": "es"
+   },
+   "reference": "hola, ¿qué tal todo por ahí? hace mucho que no hablamos.",
+   "tags": [
+    "restricciones",
+    "formato"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Empezar y terminar con texto fijo",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Escribe un párrafo de 30 a 50 palabras sobre el mar que empiece exactamente por «Cada mañana» y termine con la palabra «horizonte» (sin punto después)."
+   },
+   "checker": {
+    "type": "constraints",
+    "min_words": 30,
+    "max_words": 50,
+    "starts_with": "Cada mañana",
+    "ends_with": "horizonte",
+    "language": "es"
+   },
+   "reference": "Cada mañana bajo hasta la orilla para ver cómo cambia el color del agua. Primero es gris, luego verde y al final azul intenso. Las gaviotas llegan despacio, los barcos salen del puerto y yo me quedo quieto, escuchando las olas, con la mirada perdida en el horizonte",
+   "tags": [
+    "restricciones",
+    "formato"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Sin usar la letra e",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Escribe una frase en castellano de al menos 8 palabras que no contenga la letra «e» (ni mayúscula ni minúscula)."
+   },
+   "checker": {
+    "type": "constraints",
+    "min_words": 8,
+    "forbid_regex": [
+     "[eEéÉ]"
+    ],
+    "language": "es"
+   },
+   "reference": "Mi hija canta una canción tan bonita para todos nosotros.",
+   "tags": [
+    "restricciones",
+    "lipograma"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Sin comas ni cifras",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Explica en un párrafo de 25 a 40 palabras por qué conviene beber agua. No uses comas ni dígitos."
+   },
+   "checker": {
+    "type": "constraints",
+    "min_words": 25,
+    "max_words": 40,
+    "no_commas": true,
+    "no_digits": true,
+    "language": "es"
+   },
+   "reference": "Beber agua ayuda al cuerpo a regular la temperatura y a transportar nutrientes. También mejora la concentración y evita dolores de cabeza. Conviene llevar siempre una botella y beber a lo largo del día.",
+   "tags": [
+    "restricciones",
+    "formato"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Incluir palabras obligatorias",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Escribe un texto de 40 a 60 palabras sobre una excursión en el que aparezcan obligatoriamente las palabras «mochila», «sendero» y «cumbre»."
+   },
+   "checker": {
+    "type": "constraints",
+    "min_words": 40,
+    "max_words": 60,
+    "include": [
+     "mochila",
+     "sendero",
+     "cumbre"
+    ],
+    "language": "es"
+   },
+   "reference": "Salimos al amanecer con la mochila cargada de agua y bocadillos. El sendero subía entre pinos y piedras sueltas, y el aire fresco nos despertó del todo. Tras tres horas de marcha llegamos a la cumbre, donde el viento casi nos tiró las gorras. Desde allí se veía todo el valle y valió la pena cada paso.",
+   "tags": [
+    "restricciones",
+    "palabras"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Prohibir palabras",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Describe un atardecer en la playa en dos frases. No puedes usar las palabras «sol», «rojo» ni «mar»."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_sentences": 2,
+    "exclude": [
+     "sol",
+     "rojo",
+     "mar"
+    ],
+    "language": "es"
+   },
+   "reference": "El cielo se vuelve naranja y morado mientras las olas llegan despacio a la arena. Los últimos paseantes recogen sus toallas y la brisa trae olor a sal.",
+   "tags": [
+    "restricciones",
+    "palabras"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Cada viñeta empieza igual",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Da cinco consejos para estudiar mejor. Cada consejo es una viñeta con guion y todas las viñetas deben empezar por la palabra «Evita». Nada más."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_bullets": 5,
+    "all_bullets_start_with": "Evita",
+    "language": "es"
+   },
+   "reference": "- Evita estudiar con el móvil encima de la mesa.\n- Evita dejar todo para la víspera del examen.\n- Evita memorizar sin entender.\n- Evita estudiar sin descansos.\n- Evita dormir poco la noche anterior.",
+   "tags": [
+    "restricciones",
+    "listas"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Dos párrafos sin Markdown",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Escribe dos párrafos breves (separados por una línea en blanco) sobre el reciclaje. Texto plano: sin negritas, sin títulos, sin listas y sin símbolos de Markdown."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_paragraphs": 2,
+    "no_markdown": true,
+    "no_bullets": true,
+    "language": "es"
+   },
+   "reference": "Reciclar consiste en separar los residuos para que puedan transformarse en materiales nuevos. Así se reduce la basura que acaba en los vertederos y se ahorra energía.\n\nEn casa basta con tener contenedores separados para envases, papel, vidrio y orgánico. Con un poco de costumbre, se tarda apenas un minuto al día.",
+   "tags": [
+    "restricciones",
+    "formato"
+   ],
+   "max_tokens": 500
+  },
+  {
+   "title": "Responder solo con JSON",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Devuelve únicamente un objeto JSON con las claves «ciudad» (Madrid) y «habitantes» (un número aproximado). Sin explicaciones ni formato Markdown."
+   },
+   "checker": {
+    "type": "constraints",
+    "json_only": true,
+    "require_regex": [
+     "\"ciudad\"\\s*:\\s*\"Madrid\"",
+     "\"habitantes\"\\s*:\\s*\\d"
+    ]
+   },
+   "reference": "{\"ciudad\": \"Madrid\", \"habitantes\": 3300000}",
+   "tags": [
+    "restricciones",
+    "json"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Lista JSON de cuatro elementos",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Devuelve solo un array JSON con los nombres de cuatro planetas del sistema solar, como cadenas. Nada más."
+   },
+   "checker": {
+    "type": "constraints",
+    "json_only": true,
+    "require_regex": [
+     "^\\s*\\[\\s*(\"[^\"]+\"\\s*,\\s*){3}\"[^\"]+\"\\s*\\]\\s*$"
+    ]
+   },
+   "reference": "[\"Mercurio\", \"Venus\", \"Marte\", \"Júpiter\"]",
+   "tags": [
+    "restricciones",
+    "json"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Acróstico",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Escribe cuatro líneas, una por letra, cuyas iniciales formen verticalmente la palabra MESA. Sin título ni nada más."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_lines": 4,
+    "require_regex": [
+     "^M.*\\nE.*\\nS.*\\nA[^\\n]*$"
+    ],
+    "language": "es"
+   },
+   "reference": "Mañana saldré a pasear\nEn busca de un buen café\nSin prisa y sin reloj\nAl lado de mi río favorito",
+   "tags": [
+    "restricciones",
+    "creatividad"
+   ],
+   "max_tokens": 300
+  },
+  {
+   "title": "Palabras sin letra repetida inicial",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Escribe una frase de exactamente 6 palabras en castellano en la que ninguna palabra empiece por la misma letra que otra."
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_words": 6,
+    "unique_first_letters": true,
+    "language": "es"
+   },
+   "reference": "Hoy vamos al cine sin Pedro.",
+   "tags": [
+    "restricciones",
+    "palabras"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Responder en inglés",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Answer in English only, in exactly two sentences: why is the sky blue?"
+   },
+   "checker": {
+    "type": "constraints",
+    "exact_sentences": 2,
+    "language": "en",
+    "include_any": [
+     "scatter",
+     "scattering",
+     "Rayleigh"
+    ]
+   },
+   "reference": "The sky looks blue because molecules in the air scatter short blue wavelengths of sunlight more than long red ones. This effect is known as Rayleigh scattering.",
+   "tags": [
+    "restricciones",
+    "idioma"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Responder en castellano sin ninguna palabra en inglés",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Explica en dos o tres frases qué hace un cortafuegos de red. No uses ninguna palabra en inglés."
+   },
+   "checker": {
+    "type": "constraints",
+    "min_sentences": 2,
+    "max_sentences": 3,
+    "language": "es",
+    "no_english": true
+   },
+   "reference": "Un cortafuegos es un programa o un dispositivo que controla el tráfico que entra y sale de una red. Aplica reglas para permitir o bloquear conexiones según su origen, su destino y su tipo. Así reduce el riesgo de accesos no autorizados.",
+   "tags": [
+    "restricciones",
+    "idioma"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Resumen con límite estricto de caracteres",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Resume en un máximo de 120 caracteres (contando espacios) esta noticia: «El ayuntamiento ha aprobado la peatonalización de la calle Mayor, que comenzará en marzo y durará cuatro meses.»"
+   },
+   "checker": {
+    "type": "constraints",
+    "max_chars": 120,
+    "include": [
+     "calle Mayor",
+     "marzo"
+    ],
+    "language": "es"
+   },
+   "reference": "El ayuntamiento peatonalizará la calle Mayor desde marzo, durante cuatro meses.",
+   "tags": [
+    "restricciones",
+    "conteo"
+   ],
+   "max_tokens": 400
+  },
+  {
+   "title": "Mezcla de varias restricciones",
+   "prompt": {
+    "system": "Sigue las instrucciones del usuario al pie de la letra. No añadas saludos, explicaciones ni comentarios que no se pidan.",
+    "text": "Escribe una nota para un compañero de piso con estas condiciones: entre 25 y 45 palabras, tuteando, que mencione la «basura» y el «viernes», que termine con una pregunta (acabando en «?») y que no lleve signos de exclamación."
+   },
+   "checker": {
+    "type": "constraints",
+    "min_words": 25,
+    "max_words": 45,
+    "include": [
+     "basura",
+     "viernes"
+    ],
+    "ends_with": "?",
+    "language": "es",
+    "include_any": [
+     "tú",
+     "tienes",
+     "puedes",
+     "saca",
+     "sacas",
+     "recuerda",
+     "oye",
+     "hola"
+    ],
+    "forbid_regex": [
+     "!"
+    ]
+   },
+   "reference": "Hola, oye, que el viernes me toca a mí sacar la basura, pero ese día salgo de viaje a primera hora. ¿Puedes bajarla tú por la noche, por favor, y yo te devuelvo el favor la semana siguiente, vale?",
+   "tags": [
+    "restricciones",
+    "mixto"
+   ],
+   "max_tokens": 400
+  }
+ ]
+}
