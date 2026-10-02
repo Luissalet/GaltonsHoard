@@ -339,29 +339,34 @@ def test_a_slow_job_reports_that_it_is_still_running():
         sched.stop()
 
 
+def _ran(sched, *kinds):
+    """The shared scheduler remembers when a job last *ran* (not when it was queued): run the queued ones inline, as the lane would."""
+    sched._lane._pending.clear()
+    for kind in kinds:
+        sched.run_now(kind)
+
+
 def test_enqueue_due_follows_the_intervals():
     clock = Clock()
     sched, _ = make_scheduler(clock=clock, refresh_every_h=lambda: 6.0)
-    sched._started_at = clock()
     assert sched.enqueue_due(clock()) == 0                      # nothing is due right at start
     clock.advance(100)
     assert sched.enqueue_due(clock()) == 3                      # refresh, watch and housekeeping have waited long enough
-    assert sched.enqueue_due(clock()) == 0                      # and are pending / just done
-    sched._pending.clear()
+    assert sched.enqueue_due(clock()) == 0                      # and are pending
+    _ran(sched, "refresh", "watch", "housekeeping")
     clock.advance(61)
     assert sched.enqueue_due(clock()) == 1                      # only the one-minute watch is due again
+    _ran(sched, "watch")
     clock.advance(6 * 3600)
-    sched._pending.clear()
     assert sched.enqueue_due(clock()) == 3
 
 
 def test_watch_can_be_switched_off_independently():
     clock = Clock()
     sched, _ = make_scheduler(clock=clock, watch_enabled=lambda: False)
-    sched._started_at = clock()
     clock.advance(100)
     sched.enqueue_due(clock())
-    assert ("watch", "") not in sched._pending and ("refresh", "") in sched._pending
+    assert "watch" not in sched._lane._pending and "refresh" in sched._lane._pending
 
 
 def test_status_shape_and_pause_flag():
@@ -373,9 +378,9 @@ def test_status_shape_and_pause_flag():
 def test_start_is_idempotent_and_stop_ends_the_lanes():
     sched, _ = make_scheduler()
     sched.start()
-    threads = dict(sched._threads)
+    threads = list(sched._lane._threads)
     sched.start()
-    assert sched._threads == threads and sched.status()["running"] is True
+    assert sched._lane._threads == threads and sched.status()["running"] is True
     sched.stop()
     assert sched.status()["running"] is False
 
