@@ -20,9 +20,9 @@ import httpx
 
 from .errors import GaltonError
 from .gpus import GpuGrant
-from .port import can_listen
 from .hoard_link import proc as hl_proc
 from .hoard_link.atomic import write_json_atomic
+from .hoard_link.net import can_listen
 from .procs import kill_pid_tree, kill_tree, process_name
 from .util import slugify
 

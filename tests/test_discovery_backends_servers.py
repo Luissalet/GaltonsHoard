@@ -12,7 +12,6 @@ from galton_hoard.backends import Cancelled, ChatRequest, OllamaBackend, OpenAIB
 from galton_hoard.discovery import Discovery, host_port, name_variants
 from galton_hoard.errors import GaltonError
 from galton_hoard.gpus import GpuGrant
-from galton_hoard.port import can_listen, find_available_port, free_port
 from galton_hoard.servers import Launcher, LaunchSpec, PORT_RANGE, probe_openai
 from helpers import Clock, json_response, mock_client_factory
 from test_gguf import LLAMA, make_store, write_gguf
@@ -528,23 +527,6 @@ def test_probe_openai_reads_models_props_and_busy_slots():
     assert info["up"] and info["models"] == ["m"] and info["context"] == 4096 and info["busy"] is True and info["has_template"] is True
     with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(500))) as client:
         assert probe_openai(client, "http://h:1")["up"] is False
-
-
-# ---- ports -----------------------------------------------------------------------------------------------------------------------------------
-
-def test_ports():
-    port = free_port()
-    assert can_listen(port) and find_available_port(port) == port
-    import socket
-    s = socket.socket()
-    s.bind(("127.0.0.1", port))
-    s.listen(1)
-    try:
-        assert not can_listen(port) and find_available_port(port) > port
-    finally:
-        s.close()
-    with pytest.raises(RuntimeError):
-        find_available_port(65536, attempts=3)
 
 
 def test_the_child_numbers_gpus_like_nvidia_smi_and_sees_none_without_a_grant(launcher_parts):
