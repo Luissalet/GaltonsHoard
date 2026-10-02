@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -154,6 +153,22 @@ def _coerce(spec: Spec, value: Any) -> Any:
     raise GaltonError("invalid", "setting_type", setting=key)
 
 
+def _plausible(spec: Spec, value: Any) -> bool:
+    """Is a stored value of the kind the setting expects? A text that is not JSON comes back from the database as that text."""
+    kind = spec.kind
+    if kind == "bool":
+        return isinstance(value, bool)
+    if kind in ("int", "float", "hour"):
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if kind in ("enum", "str", "secret"):
+        return isinstance(value, str)
+    if kind in ("int_list", "str_list"):
+        return isinstance(value, list)
+    if kind == "dict":
+        return isinstance(value, dict)
+    return True
+
+
 class Settings:
     """Read and write the typed settings. ``get`` always returns a value (the default when nothing is stored)."""
 
@@ -164,13 +179,11 @@ class Settings:
         spec = SPEC_BY_KEY.get(key)
         if spec is None:
             raise GaltonError("invalid", "setting_unknown", setting=key, options=list(SPEC_BY_KEY))
-        raw = self.db.get_setting(key, None)
-        if raw is None:
+        value = self.db.get_setting(key, None)       # the shared database decodes the JSON the setting was stored as
+        if value is None:
             value = spec.default_value()
             return dict(value) if isinstance(value, dict) else (list(value) if isinstance(value, list) else value)
-        try:
-            value = json.loads(raw)
-        except ValueError:
+        if not _plausible(spec, value):               # text that was never JSON (a hand edit) or of another kind: the default
             return spec.default_value()
         if spec.kind == "dict":
             return {**spec.default, **(value if isinstance(value, dict) else {})}
@@ -209,8 +222,8 @@ class Settings:
     def set_many(self, values: dict[str, Any], *, confirm_reserved: bool = False) -> dict[str, Any]:
         clean = self.validate(values, confirm_reserved=confirm_reserved)
         for key, value in clean.items():
-            self.db.set_setting(key, json.dumps(value, ensure_ascii=False))
+            self.db.set_setting(key, value)
         return self.all()
 
     def reset(self, key: str) -> None:
-        self.db.execute("DELETE FROM settings WHERE key = ?", (key,))
+        self.db.delete_setting(key)

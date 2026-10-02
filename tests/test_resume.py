@@ -300,7 +300,7 @@ def test_cancelling_the_continuation_stops_the_grading_of_the_earlier_runs(tmp_p
 
 def test_the_run_card_and_the_migration_carry_the_link(svc, started):
     first = started["run"]
-    assert svc.db.version() >= 6 and "continues" in [r["name"] for r in svc.db.query("PRAGMA table_info(runs)")]
+    assert svc.db.schema_version >= 6 and "continues" in [r["name"] for r in svc.db.query("PRAGMA table_info(runs)")]
     assert first["continues"] == "" and svc.run_card(first)["continues"] == "" and svc.run_card(first)["continues_label"] == ""
     second = svc.store.run(svc.resume_run(first["id"], source="test")["run"]["id"])
     card = svc.run_card(second)

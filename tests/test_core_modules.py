@@ -266,10 +266,10 @@ def test_data_paths_live_under_the_data_dir(tmp_path):
 
 def test_the_database_migrates_once_and_uses_wal(tmp_path):
     db = Database(tmp_path / "x.db")
-    assert db.version() == len(MIGRATIONS) and db.query("PRAGMA journal_mode")[0][0] == "wal" and db.query("PRAGMA foreign_keys")[0][0] == 1
+    assert db.schema_version == len(MIGRATIONS) and db.query("PRAGMA journal_mode")[0][0] == "wal" and db.query("PRAGMA foreign_keys")[0][0] == 1
     db.close()
     again = Database(tmp_path / "x.db")
-    assert again.version() == len(MIGRATIONS) and again.query("SELECT COUNT(*) FROM schema_version")[0][0] == len(MIGRATIONS)
+    assert again.schema_version == len(MIGRATIONS) and again.query("SELECT COUNT(*) FROM schema_version")[0][0] == len(MIGRATIONS)
     again.close()
 
 
@@ -302,7 +302,7 @@ def test_transactions_commit_and_roll_back(tmp_path):
         with db.transaction():
             db.execute("INSERT INTO settings(key, value) VALUES ('b', '2')")
             raise RuntimeError("boom")
-    assert db.get_setting("a") == "1" and db.get_setting("b") is None and db.get_setting("b", "d") == "d"
+    assert db.get_setting("a") == 1 and db.get_setting("b") is None and db.get_setting("b", "d") == "d"     # settings are JSON values: the text 1 reads as the number 1
     db.set_setting("a", "3")
     assert db.get_setting("a") == "3"
     db.close()

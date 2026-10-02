@@ -394,7 +394,7 @@ def test_migration_two_adds_the_column_and_flags_old_cut_results(tmp_path):
     raw.close()
     db = Database(path)
     try:
-        assert db.version() == len(MIGRATIONS)
+        assert db.schema_version == len(MIGRATIONS)
         assert [r["truncated"] for r in db.query("SELECT truncated FROM results ORDER BY id")] == [1, 0, 0]
     finally:
         db.conn.close()
