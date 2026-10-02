@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import sqlite3
 import subprocess
 import sys
 import time
@@ -261,6 +263,27 @@ def test_the_database_migrates_once_and_uses_wal(tmp_path):
     again = Database(tmp_path / "x.db")
     assert again.version() == len(MIGRATIONS) and again.query("SELECT COUNT(*) FROM schema_version")[0][0] == len(MIGRATIONS)
     again.close()
+
+
+def test_answers_graded_after_waiting_lose_the_old_waiting_note(tmp_path):
+    raw = sqlite3.connect(str(tmp_path / "x.db"))
+    raw.execute("CREATE TABLE schema_version (version INTEGER NOT NULL)")
+    for index, sql in enumerate(MIGRATIONS[:6], start=1):
+        raw.executescript(sql)
+        raw.execute("INSERT INTO schema_version(version) VALUES (?)", (index,))
+    raw.execute("INSERT INTO runs(id, created_ts) VALUES ('r_1', 0)")
+    rows = [('{"reason": "the judge could not grade: judge not live", "judge_score": 0.0, "reasons": "x"}', 0),   # graded later: the note goes
+            ('{"reason": "the judge could not grade: judge not live"}', 1),                                     # still waiting: it stays
+            ('{"reason": "wrong number", "judge_score": 0.5}', 0)]                                               # another reason: untouched
+    for detail, pending in rows:
+        raw.execute("INSERT INTO results(run_id, contestant_id, suite_id, case_id, detail, judge_pending, ts) VALUES ('r_1', 'c', 's', 'k', ?, ?, 0)", (detail, pending))
+    raw.commit()
+    raw.close()
+    db = Database(tmp_path / "x.db")
+    details = [json.loads(r["detail"]) for r in db.query("SELECT detail FROM results ORDER BY id")]
+    assert "reason" not in details[0] and details[0]["reasons"] == "x"
+    assert details[1]["reason"].startswith("the judge could not grade") and details[2]["reason"] == "wrong number"
+    db.close()
 
 
 def test_transactions_commit_and_roll_back(tmp_path):

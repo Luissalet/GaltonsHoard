@@ -235,6 +235,12 @@ MIGRATIONS: list[str] = [
     """
     ALTER TABLE runs ADD COLUMN continues TEXT NOT NULL DEFAULT '';
     """,
+    # 7: answers graded after waiting for the judge kept the note of why they waited ("the judge could not grade: ...") next to the grade
+    """
+    UPDATE results SET detail = json_remove(detail, '$.reason')
+     WHERE judge_pending = 0 AND json_valid(detail) AND json_extract(detail, '$.judge_score') IS NOT NULL
+       AND json_extract(detail, '$.reason') LIKE 'the judge could not grade%';
+    """,
 ]
 
 

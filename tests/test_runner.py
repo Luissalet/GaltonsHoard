@@ -237,7 +237,7 @@ def test_judge_cases_wait_when_there_is_no_judge_and_resolve_later(svc):
     suite = make_judge_suite(svc)
     run = run_inline(svc, [suite["id"]], [subject["id"]])
     row = results(svc, run["id"])[0]
-    assert row["judge_pending"] and not row["passed"]
+    assert row["judge_pending"] and not row["passed"] and row["detail"].get("reason")
     assert svc.store.scoring_rows(contestant_ids=[subject["id"]]) == []
     assert svc.runner.judge_pending()["reason"].startswith("no judge model")
     judge = add_gguf(svc, "juez", responder=lambda req: '{"score": 9, "reasons": "correcto"}')
@@ -245,6 +245,7 @@ def test_judge_cases_wait_when_there_is_no_judge_and_resolve_later(svc):
     outcome = svc.runner.judge_pending()
     graded = results(svc, run["id"])[0]
     assert outcome["graded"] == 1 and not graded["judge_pending"] and graded["passed"] and graded["score"] == 0.9 and not graded["self_judged"]
+    assert "reason" not in graded["detail"]          # the note of why it waited goes once it is graded
 
 
 def test_a_model_judging_itself_is_flagged_and_counts_less(svc):

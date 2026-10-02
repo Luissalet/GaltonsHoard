@@ -107,6 +107,11 @@ class Session:
 _endpoint = identity.endpoint     # ``host:port`` of an address, every spelling of this computer as one host
 
 
+def _without_wait_reason(detail: Any) -> dict[str, Any]:
+    """A stored detail without the note of why the answer waited for the judge: once graded, that note is no longer true."""
+    return {k: v for k, v in (detail or {}).items() if k != "reason"} if isinstance(detail, dict) else {}
+
+
 def _find_flag(detail: Any, flag: str) -> bool:
     if isinstance(detail, dict):
         return bool(detail.get(flag)) or any(_find_flag(v, flag) for v in detail.values())
@@ -976,7 +981,7 @@ class Runner:
                 continue
             self_judged = _find_flag(verdict.get("detail"), "self_judged")
             unavailable = bool(verdict.get("unavailable"))
-            self.store.update_result(row["id"], score=verdict["score"], passed=bool(verdict["passed"]) and not unavailable, detail={**row["detail"], **verdict.get("detail", {})},
+            self.store.update_result(row["id"], score=verdict["score"], passed=bool(verdict["passed"]) and not unavailable, detail={**_without_wait_reason(row["detail"]), **verdict.get("detail", {})},
                                      unavailable=unavailable, judge_pending=False, self_judged=self_judged, confidence=0.5 if self_judged else 1.0)
             yield row["id"]
 
