@@ -12,13 +12,13 @@ from __future__ import annotations
 
 import logging
 import subprocess
-import sys
 import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from .errors import GaltonError
+from .hoard_link import proc as hl_proc
 from .hoard_link import GpuMemory, LeaseError, LeaseTimeout, gpu_free_mb, lease as hub_lease
 from .hoard_link import _hubclient
 
@@ -29,10 +29,8 @@ NAMES_TTL_S = 60.0
 
 def smi_names(timeout_s: float = 3.0) -> dict[int, str]:
     """GPU index -> product name via nvidia-smi (empty without it)."""
-    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
     try:
-        proc = subprocess.run(["nvidia-smi", "--query-gpu=index,name", "--format=csv,noheader,nounits"], capture_output=True, text=True, encoding="utf-8",
-                              errors="replace", stdin=subprocess.DEVNULL, timeout=timeout_s, creationflags=flags)
+        proc = hl_proc.run(["nvidia-smi", "--query-gpu=index,name", "--format=csv,noheader,nounits"], timeout=timeout_s)
     except (OSError, subprocess.SubprocessError):
         return {}
     out: dict[int, str] = {}

@@ -10,7 +10,6 @@ import json
 import logging
 import os
 import shlex
-import shutil
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -22,7 +21,9 @@ import httpx
 from .errors import GaltonError
 from .gpus import GpuGrant
 from .port import can_listen
-from .procs import kill_pid_tree, kill_tree, popen_kwargs, process_name
+from .hoard_link import proc as hl_proc
+from .hoard_link.atomic import write_json_atomic
+from .procs import kill_pid_tree, kill_tree, process_name
 from .util import slugify
 
 log = logging.getLogger("galton.servers")
@@ -61,14 +62,15 @@ class ServerHandle:
 
 
 def which_on_path(name: str) -> Optional[str]:
-    """A program on the PATH; the one place the launcher asks (tests replace it so the computer running them does not matter)."""
-    return shutil.which(name)
+    """A program on the PATH or in the usual install folders (the shared finder); the one place the launcher asks (tests replace it so the
+    computer running them does not matter)."""
+    return hl_proc.find_exe(name)
 
 
 class Launcher:
     """Starts and stops llama-server children. Everything process-related is injectable so tests use a fake."""
 
-    def __init__(self, settings: Any, logs_dir: Path, registry: Path, *, popen: Callable[..., Any] = subprocess.Popen, which: Optional[Callable[[str], Optional[str]]] = None,
+    def __init__(self, settings: Any, logs_dir: Path, registry: Path, *, popen: Callable[..., Any] = hl_proc.popen, which: Optional[Callable[[str], Optional[str]]] = None,
                  client_factory: Callable[[], httpx.Client] = lambda: httpx.Client(trust_env=False, timeout=3.0), port_free: Callable[[int], bool] = can_listen,
                  sleep: Callable[[float], None] = time.sleep, clock: Callable[[], float] = time.monotonic):
         self.settings = settings
@@ -106,7 +108,7 @@ class Launcher:
     def _write_registry(self, entries: list[dict[str, Any]]) -> None:
         try:
             self.registry.parent.mkdir(parents=True, exist_ok=True)
-            self.registry.write_text(json.dumps(entries), encoding="utf-8")
+            write_json_atomic(self.registry, entries, indent=None)
         except OSError:
             log.warning("could not write %s", self.registry)
 
@@ -152,7 +154,7 @@ class Launcher:
             logfile.write(f"\n=== {time.strftime('%Y-%m-%d %H:%M:%S')} {' '.join(shlex.quote(c) for c in cmd)}\n".encode("utf-8", "replace"))
             logfile.flush()
             try:
-                proc = self._popen(cmd, stdout=logfile, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, env=env, **popen_kwargs())
+                proc = self._popen(cmd, stdout=logfile, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, env=env)
             except OSError as exc:
                 raise GaltonError("unavailable", "server_start_failed", detail=str(exc)) from exc
         entries = self._read_registry() + [{"pid": proc.pid, "port": port, "name": spec.name, "started": time.time()}]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -16,7 +17,8 @@ from galton_hoard.config import Config, default_routes_file, load_dotenv
 from galton_hoard.db import MIGRATIONS, Database
 from galton_hoard.errors import GaltonError
 from galton_hoard.judging import has_judge, make_ask, pending_reply
-from galton_hoard.procs import IS_WINDOWS, kill_tree, popen_kwargs, process_name
+from galton_hoard.hoard_link import proc as hl_proc
+from galton_hoard.procs import IS_WINDOWS, kill_pid_tree, kill_tree, process_name
 from helpers import add_gguf
 from test_gguf import LLAMA, make_store, write_gguf
 
@@ -174,15 +176,20 @@ def test_describe_a_server_and_an_unknown_size(svc):
 
 # ---- processes -------------------------------------------------------------------------------------------------------------------------------
 
-def test_popen_kwargs_detach_the_child():
-    kw = popen_kwargs()
-    assert ("creationflags" in kw) if IS_WINDOWS else (kw == {"start_new_session": True})
+def test_children_start_in_their_own_group_through_the_shared_launcher():
+    child = hl_proc.popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        if not IS_WINDOWS:
+            assert os.getpgid(child.pid) == child.pid                   # its own session: killing the group never touches this process
+    finally:
+        kill_tree(child)
+    assert child.poll() is not None
 
 
 @pytest.mark.skipif(IS_WINDOWS, reason="uses a POSIX shell")
 def test_kill_tree_kills_the_children_too(tmp_path):
     marker = tmp_path / "child.pid"
-    proc = subprocess.Popen(["sh", "-c", f"sleep 60 & echo $! > {marker}; wait"], **popen_kwargs())
+    proc = hl_proc.popen(["sh", "-c", f"sleep 60 & echo $! > {marker}; wait"])
     for _ in range(50):
         if marker.exists() and marker.read_text().strip():
             break
@@ -199,6 +206,7 @@ def test_kill_tree_kills_the_children_too(tmp_path):
 
 def test_kill_tree_of_nothing_or_an_ended_process_is_harmless():
     kill_tree(None)
+    kill_pid_tree(2 ** 22 + 12345)          # a pid that does not exist
     proc = subprocess.Popen([sys.executable, "-c", "pass"])
     proc.wait()
     kill_tree(proc)

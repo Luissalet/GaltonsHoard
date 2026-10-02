@@ -12,6 +12,8 @@ import subprocess
 import sys
 from typing import Optional
 
+from .hoard_link import proc as hl_proc
+
 #: cores left to the owner's other programs while a model runs on the CPU
 RESERVED_CORES = 2
 MIN_THREADS = 2
@@ -52,10 +54,8 @@ def _cores_proc() -> int:
 
 
 def _cores_windows() -> int:
-    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     try:
-        proc = subprocess.run(["powershell", "-NoProfile", "-Command", "(Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfCores -Sum).Sum"],
-                              capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=8, creationflags=flags)
+        proc = hl_proc.run(["powershell", "-NoProfile", "-Command", "(Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfCores -Sum).Sum"], timeout=8)
         return int((proc.stdout or "").strip() or 0)
     except (OSError, subprocess.SubprocessError, ValueError):
         return 0

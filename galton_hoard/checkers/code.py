@@ -17,7 +17,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-from ..procs import kill_tree, popen_kwargs
+from ..hoard_link import proc as hl_proc
+from ..procs import kill_tree
 from .textutil import split_reasoning
 from .types import CheckContext, ModelOutput, bad_spec, unavailable, verdict
 
@@ -105,8 +106,8 @@ def run_asserts(code: str, tests: list[str], entry: str = "", timeout_s: float =
         out_path, err_path = work / "stdout.txt", work / "stderr.txt"
         timed_out = False
         with open(out_path, "wb") as out, open(err_path, "wb") as err:
-            proc = subprocess.Popen([sys.executable, "-I", str(work / "harness.py"), str(work / "spec.json")], cwd=work, env=_env(),
-                                    stdin=subprocess.DEVNULL, stdout=out, stderr=err, **popen_kwargs())
+            proc = hl_proc.popen([sys.executable, "-I", str(work / "harness.py"), str(work / "spec.json")], cwd=work, env=_env(),
+                                    stdin=subprocess.DEVNULL, stdout=out, stderr=err)
             deadline = time.monotonic() + timeout_s
             while proc.poll() is None:
                 if time.monotonic() > deadline:

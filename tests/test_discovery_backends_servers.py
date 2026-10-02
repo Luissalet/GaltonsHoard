@@ -403,7 +403,9 @@ class FakeProc:
 
 
 @pytest.fixture
-def launcher_parts(tmp_path, svc):
+def launcher_parts(tmp_path, svc, monkeypatch):
+    # the fake child has a made-up pid: never let a test signal whatever process happens to own that number
+    monkeypatch.setattr("galton_hoard.servers.kill_tree", lambda proc, **kw: proc.kill())
     binary = tmp_path / "llama-server"
     binary.write_text("#!/bin/sh\n")
     svc.settings.set_many({"llama.server_path": str(binary)})
