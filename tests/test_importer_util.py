@@ -10,7 +10,7 @@ import pytest
 from galton_hoard import importer
 from galton_hoard.board import guess_category
 from galton_hoard.errors import GaltonError
-from galton_hoard.util import (clamp_text, fold, human_bytes, in_quiet_hours, local_hour, median, new_id, percentile, round_or_none, slugify, squash,
+from galton_hoard.util import (clamp_text, fold, human_bytes, median, new_id, percentile, round_or_none, slugify, squash,
                                stable_hash)
 
 
@@ -180,16 +180,21 @@ def test_new_id_sorts_by_time_and_is_unique():
     a, b = new_id("run", 1_000.0), new_id("run", 2_000.0)
     assert a < b and a.startswith("run_")
     assert len({new_id("x", 5.0) for _ in range(50)}) == 50
+    later = [new_id("r") for _ in range(200)]
+    assert later == sorted(later) and len(set(later)) == 200 and all(len(i) == 28 and i == i.lower() for i in later)   # strictly ordered, lowercase ULIDs
 
 
-def test_quiet_hours_wrap_over_midnight():
-    def at(hour):
-        return datetime(2026, 3, 4, hour, 30).timestamp()
-    assert in_quiet_hours(at(23), 22, 7) and in_quiet_hours(at(3), 22, 7)
-    assert not in_quiet_hours(at(12), 22, 7)
-    assert in_quiet_hours(at(10), 9, 17) and not in_quiet_hours(at(18), 9, 17)
-    assert not in_quiet_hours(at(3), 5, 5)
-    assert local_hour(at(14)) == 14.5
+def test_quiet_hours_wrap_over_midnight(svc):
+    def at(hour, minute=30):
+        return datetime(2026, 3, 4, hour, minute).timestamp()
+    def quiet(start, end, ts):
+        svc.settings.set_many({"watch.quiet_from": start, "watch.quiet_to": end})
+        return svc.watch.in_quiet_hours(ts)
+    assert quiet(22, 7, at(23)) and quiet(22, 7, at(3))
+    assert not quiet(22, 7, at(12))
+    assert quiet(9, 17, at(10)) and not quiet(9, 17, at(18))
+    assert not quiet(5, 5, at(3))                                     # the same hour twice: no window
+    assert quiet(7.5, 8, at(7, 45)) and not quiet(7.5, 8, at(7, 15))   # hours may have a fraction
 
 
 def test_median_and_percentile():

@@ -116,7 +116,7 @@ class Store:
     # ------------------------------------------------------------------ contestants
     def create_contestant(self, **fields: Any) -> dict[str, Any]:
         now = self.clock()
-        cid = fields.pop("id", None) or new_id("c", now)
+        cid = fields.pop("id", None) or new_id("c")
         data = {k: _enc(v) for k, v in fields.items() if k in CONTESTANT_FIELDS}
         cols = ["id", "created_ts", "updated_ts", *data.keys()]
         self.db.execute(f"INSERT INTO contestants({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})", [cid, now, now, *data.values()])
@@ -191,7 +191,7 @@ class Store:
     # ------------------------------------------------------------------ suites and cases
     def create_suite(self, **fields: Any) -> dict[str, Any]:
         now = self.clock()
-        sid = fields.pop("id", None) or new_id("s", now)
+        sid = fields.pop("id", None) or new_id("s")
         data = {k: _enc(v) for k, v in fields.items() if k in SUITE_FIELDS}
         cols = ["id", "created_ts", "updated_ts", *data.keys()]
         self.db.execute(f"INSERT INTO suites({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})", [sid, now, now, *data.values()])
@@ -241,7 +241,7 @@ class Store:
 
     def create_case(self, **fields: Any) -> dict[str, Any]:
         now = self.clock()
-        kid = fields.pop("id", None) or new_id("k", now)
+        kid = fields.pop("id", None) or new_id("k")
         data = {k: _enc(v) for k, v in fields.items() if k in CASE_FIELDS}
         cols = ["id", "created_ts", "updated_ts", *data.keys()]
         self.db.execute(f"INSERT INTO cases({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})", [kid, now, now, *data.values()])
@@ -286,7 +286,7 @@ class Store:
     # ------------------------------------------------------------------ runs
     def create_run(self, **fields: Any) -> dict[str, Any]:
         now = self.clock()
-        rid = fields.pop("id", None) or new_id("r", now)
+        rid = fields.pop("id", None) or new_id("r")
         data = {k: _enc(v) for k, v in fields.items() if k in RUN_FIELDS}
         cols = ["id", "created_ts", *data.keys()]
         self.db.execute(f"INSERT INTO runs({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})", [rid, now, *data.values()])
@@ -556,7 +556,7 @@ class Store:
 
     # ------------------------------------------------------------------ arena
     def add_arena_pair(self, **fields: Any) -> str:
-        pid = new_id("a", self.clock())
+        pid = new_id("a")
         self.db.execute("INSERT INTO arena_pairs(id, case_id, category, a_result, b_result, a_contestant, b_contestant, created_ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                         (pid, fields["case_id"], fields.get("category", ""), fields["a_result"], fields["b_result"], fields["a_contestant"],
                          fields["b_contestant"], self.clock()))
