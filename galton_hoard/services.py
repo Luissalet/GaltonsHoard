@@ -6,7 +6,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import secrets as _secrets
 import time
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -24,6 +23,7 @@ from .errors import GaltonError
 from .fakes import FakeGpus, FakeWorld, demo_seed
 from .gpus import GpuManager
 from .hoard_link import family
+from .hoard_link.tokens import read_or_create_token, write_url
 from .messages import CodedText, hint_of, text
 from .routes import TASKS, Routes
 from .runner import Runner, normalise_settings
@@ -42,31 +42,6 @@ CARD_FIELDS = ("id", "key", "name", "kind", "url", "api", "model", "provider", "
 OUTPUT_PREVIEW = 1500
 
 
-def write_token(config: Config) -> str:
-    """The MCP token is persistent: created once, reused on every later start."""
-    config.data_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        existing = config.token_path.read_text(encoding="utf-8").strip()
-    except OSError:
-        existing = ""
-    if len(existing) >= 32:
-        return existing
-    token = _secrets.token_hex(32)
-    config.token_path.write_text(token, encoding="utf-8")
-    try:
-        config.token_path.chmod(0o600)
-    except OSError:
-        pass
-    return token
-
-
-def write_url(config: Config) -> None:
-    try:
-        config.url_path.write_text(f"http://127.0.0.1:{config.port}", encoding="utf-8")
-    except OSError:
-        pass
-
-
 def _family_call(app: str, tool: str, arguments: Optional[dict[str, Any]] = None) -> dict[str, Any]:
     return family.call(app, tool, arguments, timeout=60.0)
 
@@ -83,8 +58,8 @@ class Services:
         self.meta_reader, self.digest_fn = meta_reader, digest_fn
         for d in (config.data_dir, config.cache_dir, config.logs_dir, config.images_dir):
             d.mkdir(parents=True, exist_ok=True)
-        self.token = write_token(config)
-        write_url(config)
+        self.token = read_or_create_token(config.token_path)      # persistent: created once, reused on every later start
+        write_url(config.url_path, f"http://127.0.0.1:{config.port}")
         self.db = Database(config.db_path)
         self.store = Store(self.db, clock_fn)
         self.settings = Settings(self.db)
@@ -545,7 +520,11 @@ class Services:
         self._refuse_hopeless(rows, problems)
         run = self.runner.create(suites=suites, contestants=[c["id"] for c in rows], settings=rs, label=label, source=source, caller=caller)
         self.submit_run(run["id"], wait_s)
-        return {"run": self.run_card(self.store.run(run["id"])), "warnings": [text("warn_will_fail", name=p["name"], problem=p["problem"]) for p in problems]}
+        card = self.run_card(self.store.run(run["id"]))
+        out = {"run": card, "warnings": [text("warn_will_fail", name=p["name"], problem=p["problem"]) for p in problems]}
+        if wait_s > 0 and card["state"] in ACTIVE_RUN_STATES:
+            out["still_running"] = True      # the wait ran out first: the run goes on, ask run_status again
+        return out
 
     @staticmethod
     def _refuse_hopeless(rows: list[dict[str, Any]], problems: list[dict[str, Any]]) -> None:
@@ -566,7 +545,11 @@ class Services:
         self._refuse_hopeless(rows, problems)
         run = self.runner.resume(earlier["id"], source=source, caller=caller)
         self.submit_run(run["id"], wait_s)
-        return {"run": self.run_card(self.store.run(run["id"])), "continues": earlier["id"], "warnings": [text("warn_will_fail", name=p["name"], problem=p["problem"]) for p in problems]}
+        card = self.run_card(self.store.run(run["id"]))
+        out = {"run": card, "continues": earlier["id"], "warnings": [text("warn_will_fail", name=p["name"], problem=p["problem"]) for p in problems]}
+        if wait_s > 0 and card["state"] in ACTIVE_RUN_STATES:
+            out["still_running"] = True
+        return out
 
     def measure_new(self, *, suite: str = SMOKE_SUITE, include_stale: bool = True, source: str = "ui", caller: str = "") -> dict[str, Any]:
         """Run the quick suite on every enabled model that was never measured on it, or whose file changed since."""
