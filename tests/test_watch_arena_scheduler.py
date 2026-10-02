@@ -406,20 +406,18 @@ def test_runs_left_queued_by_a_restart_are_run_when_the_app_starts_again(svc):
         svc.scheduler.stop()
 
 
-def test_publishing_routes_retries_while_a_reader_holds_the_file():
-    from galton_hoard.routes import replace_retrying
-    calls = []
+def test_publishing_routes_retries_while_a_reader_holds_the_file(svc, measured, monkeypatch):
+    from galton_hoard.hoard_link import atomic
+    real, calls = atomic.os.replace, []
 
     def flaky(src, dst):
         calls.append(src)
         if len(calls) < 3:
             raise PermissionError(13, "in use")
+        real(src, dst)
 
-    replace_retrying("a", "b", replace=flaky, sleep=lambda s: None)
-    assert len(calls) == 3
-
-    def always_locked(src, dst):
-        raise PermissionError(13, "in use")
-
-    with pytest.raises(PermissionError):
-        replace_retrying("a", "b", attempts=4, replace=always_locked, sleep=lambda s: None)
+    monkeypatch.setattr(atomic.os, "replace", flaky)
+    monkeypatch.setattr(atomic.time, "sleep", lambda s: None)
+    out = svc.routes.publish()
+    assert len(calls) == 3 and svc.config.routes_path().is_file() and out["path"] == str(svc.config.routes_path())
+    assert not list(svc.config.routes_path().parent.glob("*.tmp"))        # no temp file is left behind

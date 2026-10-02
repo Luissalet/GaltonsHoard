@@ -10,13 +10,11 @@ checked cases than ``min_cases`` is never published.
 from __future__ import annotations
 
 import json
-import os
-import tempfile
-import time
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 from . import stats
+from .hoard_link.atomic import write_json_atomic
 from .messages import text
 from .util import iso_local, usable_alias
 
@@ -28,20 +26,6 @@ TASKS: dict[str, tuple[str, ...]] = {
     "rag": ("rag",), "vision": ("vision",), "summary": ("summary",), "translation": ("translation",), "math": ("math",),
 }
 CAPABILITY = {"vision": "vision"}
-
-
-def replace_retrying(src: str, dst: Path, attempts: int = 20, wait_s: float = 0.1, replace: Optional[Callable[[str, Path], None]] = None,
-                     sleep: Callable[[float], None] = time.sleep) -> None:
-    """``os.replace`` that survives a reader holding the file: on Windows a file another process has open (Hoard Link reading the
-    table) cannot be replaced for that moment and the call fails with PermissionError; it is retried for about two seconds."""
-    for attempt in range(attempts):
-        try:
-            (replace or os.replace)(src, dst)
-            return
-        except PermissionError:
-            if attempt == attempts - 1:
-                raise
-            sleep(wait_s)
 
 
 def names_for(c: dict[str, Any]) -> list[str]:
@@ -216,19 +200,7 @@ class Routes:
         current = self.published()
         diff = self.diff(current, doc)
         path = self.path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(prefix=".routes-", suffix=".json", dir=str(path.parent))
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                json.dump(doc, fh, ensure_ascii=False, indent=2)
-                fh.write("\n")
-            replace_retrying(tmp, path)
-        except BaseException:
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
-            raise
+        write_json_atomic(path, doc)  # temp file + replace with retries: Hoard Link may be reading the table at that moment
         self.store.add_publication(path=str(path), doc=doc, diff=diff, note=note)
         self.emit("galton.routes.updated", {"path": str(path), "tasks": sorted(doc["tasks"]), "changed": [c["task"] for c in diff["changed"]], "added": diff["added"]})
         return {"path": str(path), "doc": doc, "diff": diff, "detail": built["detail"]}

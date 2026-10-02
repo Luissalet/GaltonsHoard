@@ -227,7 +227,7 @@ def test_publish_is_atomic_and_leaves_no_temporary_files(svc, measured):
     path = svc.config.routes_path()
     path.write_text("{}", encoding="utf-8")
     svc.routes.publish()
-    assert [p.name for p in path.parent.iterdir() if p.name.startswith(".routes-")] == []
+    assert [p.name for p in path.parent.iterdir() if p.name.endswith(".tmp")] == []
     assert json.loads(path.read_text(encoding="utf-8"))["schema"] == 1
 
 
@@ -235,13 +235,13 @@ def test_a_failed_write_keeps_the_previous_file(svc, measured, monkeypatch):
     svc.routes.publish()
     path = svc.config.routes_path()
     before = path.read_text(encoding="utf-8")
-    import galton_hoard.routes as routes_mod
-    monkeypatch.setattr(routes_mod.os, "replace", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full")))
+    from galton_hoard.hoard_link import atomic
+    monkeypatch.setattr(atomic.os, "replace", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full")))
     svc.store.update_contestant(measured["mid"]["id"], enabled=False)
     with pytest.raises(OSError):
         svc.routes.publish()
     assert path.read_text(encoding="utf-8") == before
-    assert [p.name for p in path.parent.iterdir() if p.name.startswith(".routes-")] == []
+    assert [p.name for p in path.parent.iterdir() if p.name.endswith(".tmp")] == []
 
 
 def test_a_corrupt_published_file_reads_as_nothing_published(svc):
