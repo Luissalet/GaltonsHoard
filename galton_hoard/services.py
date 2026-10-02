@@ -23,6 +23,7 @@ from .errors import GaltonError
 from .fakes import FakeGpus, FakeWorld, demo_seed
 from .gpus import GpuManager
 from .hoard_link import family
+from .hoard_link.docs.sniff import sniff
 from .hoard_link.tokens import read_or_create_token, write_url
 from .messages import CodedText, hint_of, text
 from .routes import TASKS, Routes
@@ -362,8 +363,8 @@ class Services:
         if source.stat().st_size > 10 * 1024 * 1024:
             raise GaltonError("too_large", "image_too_large")
         data = source.read_bytes()
-        kinds = {b"\x89PNG": "png", b"\xff\xd8\xff": "jpg", b"RIFF": "webp", b"GIF8": "gif"}
-        ext = next((e for magic, e in kinds.items() if data.startswith(magic)), "")
+        found = sniff(source.name, data)          # by content: a RIFF audio file is not a WebP picture
+        ext = found.ext if found.kind == "image" and found.ext in ("png", "jpg", "webp", "gif") else ""
         if not ext:
             raise GaltonError("unsupported", "image_type", name=source.name)
         name = f"{hashlib.sha256(data).hexdigest()[:24]}.{ext}"

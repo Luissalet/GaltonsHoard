@@ -167,3 +167,31 @@ def test_the_launcher_script_imports_the_shared_net_helpers():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)                          # a deleted helper module would fail here, not on the user's double click
     assert module.SERVICE == "galton-hoard" and callable(module.main)
+
+
+def test_images_are_recognised_by_their_content(svc, tmp_path):
+    import struct
+    import zlib
+
+    def png() -> bytes:
+        def chunk(kind: bytes, body: bytes) -> bytes:
+            return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+        return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00")) + chunk(b"IEND", b"")
+
+    good = tmp_path / "foto.png"
+    good.write_bytes(png())
+    name = svc.attach_image(str(good))
+    assert name.endswith(".png") and (svc.config.images_dir / name).read_bytes() == good.read_bytes()
+    renamed = tmp_path / "foto.dat"                                                 # the content decides, not the name
+    renamed.write_bytes(png())
+    assert svc.attach_image(str(renamed)) == name
+    wav = tmp_path / "sonido.webp"                                                  # a RIFF audio file used to pass for a WebP picture
+    wav.write_bytes(b"RIFF" + struct.pack("<I", 36) + b"WAVEfmt " + b"\x00" * 40)
+    from galton_hoard.errors import GaltonError
+    with pytest.raises(GaltonError) as refused:
+        svc.attach_image(str(wav))
+    assert refused.value.code == "unsupported"
+    text = tmp_path / "nota.png"
+    text.write_text("no soy una imagen", encoding="utf-8")
+    with pytest.raises(GaltonError):
+        svc.attach_image(str(text))

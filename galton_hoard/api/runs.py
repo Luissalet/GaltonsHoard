@@ -7,6 +7,7 @@ from fastapi.responses import Response
 
 from .. import suites as suite_lib
 from ..errors import GaltonError
+from ..hoard_link.docs.sniff import sniff
 from ..messages import wire
 from .deps import services
 
@@ -32,5 +33,5 @@ def vision_image(request: Request, case_id: str, number: int):
     if number < 1 or number > len(images):
         raise GaltonError("not_found", "case_images", n=len(images))
     data = images[number - 1]
-    kind = "image/png" if data.startswith(b"\x89PNG") else "image/jpeg" if data.startswith(b"\xff\xd8") else "image/webp" if data.startswith(b"RIFF") else "image/gif"
-    return Response(data, media_type=kind, headers=SAFE_HEADERS)
+    found = sniff("", data)
+    return Response(data, media_type=found.mime if found.kind == "image" else "image/png", headers=SAFE_HEADERS)
