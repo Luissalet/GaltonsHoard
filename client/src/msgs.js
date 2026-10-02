@@ -257,6 +257,7 @@ export const MESSAGES = {
   msg_label_watch: ["vigilancia: {name}", "watch: {name}"],
   msg_label_continued: ["{label} (continuación)", "{label} (continued)"],
   msg_label_measure_new: ["Medir lo nuevo ({n})", "Measure what is new ({n})"],
+  msg_label_galton_run: ["Medición pedida por otra app ({n})", "Run requested by another app ({n})"],
   msg_measure_new_none: ["Todos los modelos activos ya tienen resultados en {name} para su versión actual.", "Every enabled model already has results on {name} for its current version."],
   msg_model_removed_note: ["Volverá tras la próxima búsqueda si sigue instalado; para apartarlo sin borrarlo, desactívalo.", "It is back after the next refresh if it is still installed; use model_update enabled=false to keep it out of the way instead."],
   msg_row_not_object: ["no es un objeto", "not an object"],

@@ -218,6 +218,7 @@ TEXTS: dict[str, str] = {
     "label_watch": "watch: {name}",
     "label_continued": "{label} (continued)",
     "label_measure_new": "Measure what is new ({n})",
+    "label_galton_run": "Run requested by another app ({n})",
     "measure_new_none": "Every enabled model already has results on {name} for its current version.",
     "model_removed_note": "It is back after the next refresh if it is still installed; use model_update enabled=false to keep it out of the way instead.",
     "row_not_object": "not an object",

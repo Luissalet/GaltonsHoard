@@ -446,6 +446,22 @@ Annotations: readOnlyHint, idempotentHint.
 | `limit` (integer) | no |  |
 | `offset` (integer) | no |  |
 
+## `galton_run`
+
+Measure these models now (quick suite by default). Medir estos modelos ahora.
+
+Names Galton has not seen yet trigger one rediscovery; names still unknown are listed in not_found. Same run as run_start, simpler arguments.
+Sinónimos: medir modelo recién publicado, probar este modelo, benchmark rápido de modelos
+
+Annotations: openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `models` (array) | yes | Model names or ids (an Ollama tag, a GGUF file name, an id from models_list). A name not seen yet triggers one rediscovery. |
+| `suites` (array) | no | Suites to run (default: the quick one). |
+| `label` (string) | no |  |
+| `wait_s` (number) | no | Wait this long for the run to finish before answering (0: return at once). |
+
 ## `measure_new`
 
 Run the quick suite on every model that is new or changed. Medir lo nuevo.

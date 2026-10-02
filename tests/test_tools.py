@@ -340,6 +340,33 @@ def test_a_discarded_run_leaves_the_arena_the_regression_check_and_the_judge_que
     assert svc.watch.detect_regressions(worse["id"]) == [] and not svc.store.notices(kind="regression")
 
 
+def test_galton_run_measures_the_named_models_and_lists_the_unknown(svc):
+    add_gguf(svc, "alfa-q4")
+    out = call(svc, "galton_run", models=["alfa-q4", "no-existe:1b"])
+    assert out["models"] == ["alfa-q4"] and out["not_found"] == ["no-existe:1b"]
+    run = svc.store.run(out["run"]["id"])
+    assert run["state"] == "done" and run["suites"] == ["s_rapida"] and run["label"]
+    again = call(svc, "galton_run", models=["alfa-q4"], suites=["razonamiento"], label="mía")
+    assert svc.store.run(again["run"]["id"])["label"] == "mía"
+    with pytest.raises(GaltonError):
+        call(svc, "galton_run", models=["tampoco:7b"])
+    with pytest.raises(Exception):
+        call(svc, "galton_run", models=[])
+
+
+def test_galton_run_rediscovers_once_for_a_name_it_has_not_seen(svc):
+    seen = []
+
+    def refresh():
+        seen.append(1)
+        add_gguf(svc, "recien-publicado")
+        return {"new": [], "changed": [], "missing": []}
+
+    svc.discovery.refresh = refresh
+    out = call(svc, "galton_run", models=["recien-publicado", "otro-desconocido"])
+    assert out["models"] == ["recien-publicado"] and out["not_found"] == ["otro-desconocido"] and len(seen) == 1
+
+
 def test_run_start_with_specs_for_an_unregistered_file(svc, tmp_path):
     path = tmp_path / "tuned.gguf"
     path.write_bytes(b"GGUF" + b"\0" * 64)

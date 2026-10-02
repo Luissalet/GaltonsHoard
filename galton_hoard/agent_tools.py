@@ -322,6 +322,13 @@ class MeasureNewArgs(BaseModel):
     include_stale: bool = Field(True, description="Also re-measure models whose file changed.")
 
 
+class GaltonRunArgs(BaseModel):
+    models: list[str] = Field(..., min_length=1, max_length=40, description="Model names or ids (an Ollama tag, a GGUF file name, an id from models_list). A name not seen yet triggers one rediscovery.")
+    suites: list[str] = Field(default_factory=list, max_length=40, description="Suites to run (default: the quick one).")
+    label: str = Field("", max_length=120)
+    wait_s: float = Field(0, ge=0, le=600, description="Wait this long for the run to finish before answering (0: return at once).")
+
+
 class LeaderboardArgs(BaseModel):
     category: str = Field("", max_length=30, description=f"A task ({', '.join(TASKS)}) or a suite category ({', '.join(CATEGORIES)}). Empty: everything.")
     suite: str = Field("", max_length=200, description="One suite instead of a category.")
@@ -726,6 +733,11 @@ def run_run_results(svc: Services, a: RunResultsArgs) -> dict[str, Any]:
                        "counts": svc.store.count_results(run["id"])})
 
 
+def run_galton_run(svc: Services, a: GaltonRunArgs) -> dict[str, Any]:
+    return cap_result(svc.galton_run(a.models, suites=_expand_suites(svc, a.suites) if a.suites else None, label=a.label, source="ui" if _UNCAPPED.get() else "assistant",
+                                     caller=_CALLER.get(), wait_s=a.wait_s))
+
+
 def run_measure_new(svc: Services, a: MeasureNewArgs) -> dict[str, Any]:
     return cap_result(svc.measure_new(suite=a.suite, include_stale=a.include_stale, source="ui" if _UNCAPPED.get() else "assistant", caller=_CALLER.get()))
 
@@ -894,6 +906,9 @@ TOOLS: list[Tool] = [
     Tool("run_results", _d("Per-case results of a run: answer, score, checker detail, timing. Resultados de una ejecución.",
                            "Filter by model, suite, case, failed/passed. Answers are untrusted text.", "qué falló, respuestas, por qué suspendió, detalle por caso"),
          RunResultsArgs, _ann(True), run_run_results),
+    Tool("galton_run", _d("Measure these models now (quick suite by default). Medir estos modelos ahora.",
+                          "Names Galton has not seen yet trigger one rediscovery; names still unknown are listed in not_found. Same run as run_start, simpler arguments.",
+                          "medir modelo recién publicado, probar este modelo, benchmark rápido de modelos"), GaltonRunArgs, _ann(False, idempotent=False, open_world=True), run_galton_run),
     Tool("measure_new", _d("Run the quick suite on every model that is new or changed. Medir lo nuevo.", synonyms="medir novedades, modelos sin medir, re-medir cambiados"),
          MeasureNewArgs, _ann(False, idempotent=True, open_world=True), run_measure_new),
     Tool("judge_run", _d("Grade the answers that waited for the judge model. Pasar el juez a lo pendiente.", "Needs settings judge.contestant.", "calificar respuestas abiertas, juez"),

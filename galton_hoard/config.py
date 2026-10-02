@@ -54,9 +54,13 @@ def load_dotenv(path: Path) -> dict[str, str]:
 
 
 def default_routes_file() -> Path:
-    """Where the routing table is published: ``HOARD_ROUTES_FILE`` or ``~/.hoard/routes.json``."""
+    """Where the routing table is published, the place Hoard Link reads: ``HOARD_ROUTES_FILE``, else ``routes.json`` in ``HOARD_HOME``,
+    else ``~/.hoard/routes.json``."""
     override = _env("HOARD_ROUTES_FILE")
-    return Path(override).expanduser() if override else Path.home() / ".hoard" / "routes.json"
+    if override:
+        return Path(override).expanduser()
+    home = _env("HOARD_HOME")
+    return (Path(home).expanduser() if home else Path.home() / ".hoard") / "routes.json"
 
 
 @dataclass

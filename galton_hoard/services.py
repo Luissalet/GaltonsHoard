@@ -108,7 +108,8 @@ class Services:
         self.discovery = Discovery(self.store, self.settings, client_factory=client_factory, clock=clock_fn, meta_reader=meta_reader, digest_fn=digest_fn,
                                    offline=config.offline or self.fake, token_fallback=lambda: config.secret("FAUSTUS_TOKEN"))
         self.runner = Runner(self.store, self.settings, self.gpus, self.launcher, self.backend_factory, images_dir=config.images_dir, clock=clock_fn, sleep=sleep,
-                             family_call=self.family_call, emit=self.emit, client_factory=client_factory, meta_reader=meta_reader, digest_fn=digest_fn)
+                             family_call=self.family_call, emit=self.emit, client_factory=client_factory, meta_reader=meta_reader, digest_fn=digest_fn,
+                             base_url=lambda: f"http://127.0.0.1:{config.port}")
         self.arena = Arena(self.store, self.settings)
         self.routes = Routes(self.store, self.settings, config.routes_path, clock=clock_fn, emit=self.emit)
         self.board = Board(self.store, self.settings, self.routes, clock_fn)
@@ -157,6 +158,7 @@ class Services:
         """A run that was running when the process died can never finish: say so instead of showing it as live forever."""
         for run in self.store.runs(states=("running", "waiting_gpu", "waiting_server"), limit=100):
             self.store.update_run(run["id"], state="failed", finished_ts=self.clock(), error=text("run_stopped"))
+            self.runner.jobs.finished(self.store.run(run["id"]), "failed", str(text("run_stopped")))
             for rc in self.store.run_contestants(run["id"]):
                 if rc["state"] not in ("done", "failed", "cancelled"):
                     self.store.upsert_run_contestant(run["id"], rc["contestant_id"], state="failed", error=text("rc_interrupted"), wait_since=None)
@@ -610,6 +612,38 @@ class Services:
                     log.exception("regression check failed for %s", run["id"])
         return {"run": self.run_card(self.store.run(run["id"])), "discarded": False, "restored": was, "results": self.db_count("results", "run_id", run["id"]),
                 "routes_has_changes": self.routes_view()["diff"]["has_changes"], "note": text("run_restore_note") if was else text("run_not_discarded_note")}
+
+    def galton_run(self, models: list[str], *, suites: Optional[list[str]] = None, label: str = "", source: str = "assistant", caller: str = "",
+                   wait_s: float = 0.0) -> dict[str, Any]:
+        """Queue a run of the named models (the quick suite unless ``suites`` says otherwise). This is what another app asks after it
+        published a model: a name Galton has not seen yet triggers one rediscovery (Ollama, servers, GGUF folders) before giving up.
+        Names that still cannot be found are listed in ``not_found``; the run goes ahead with the ones that resolved."""
+        found: list[dict[str, Any]] = []
+        missing: list[str] = []
+        refreshed = False
+        for name in [str(m).strip() for m in models if str(m).strip()]:
+            row = self.store.find_contestant(name)
+            if row is None and not refreshed:
+                refreshed = True
+                try:
+                    self.discovery.refresh()
+                except Exception:  # noqa: BLE001 — discovery trouble is reported as "not found" below
+                    log.exception("rediscovery before galton_run failed")
+                row = self.store.find_contestant(name)
+            if row is None:
+                try:
+                    row = self.runner.resolve_contestants([{"kind": "ollama", "model": name}])[0]
+                except GaltonError:
+                    row = None
+            if row is None:
+                missing.append(name)
+            elif row["id"] not in [c["id"] for c in found]:
+                found.append(row)
+        if not found:
+            raise GaltonError("not_found", "no_model_spec", ref=", ".join(missing) or "(none)")
+        started = self.start_run(suites=suites or [SMOKE_SUITE], contestants=[c["id"] for c in found], label=label or text("label_galton_run", n=len(found)),
+                                 source=source, caller=caller, wait_s=wait_s)
+        return {**started, "models": [c["name"] for c in found], "not_found": missing}
 
     # ------------------------------------------------------------------ routes
     def routes_changed(self) -> None:

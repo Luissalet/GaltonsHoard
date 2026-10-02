@@ -28,6 +28,7 @@ from .gpus import GpuManager
 from .hoard_link import reasoning
 from .identity import IdentityGuard
 from .idle import LlamaGuard, OllamaGuard, wait_until_idle
+from .jobevents import RunJobEvents
 from .judging import has_judge, make_ask, pending_reply
 from .servers import LaunchSpec, probe_openai, slots_busy
 
@@ -119,10 +120,12 @@ class Runner:
                  clock: Callable[[], float] = time.time, sleep: Callable[[float], None] = time.sleep, family_call: Optional[Callable[..., dict[str, Any]]] = None,
                  emit: Optional[Callable[[str, dict[str, Any]], None]] = None, client_factory: Optional[Callable[[], httpx.Client]] = None,
                  meta_reader: Callable[[Any], dict[str, Any]] = gguf_meta.read_meta, digest_fn: Callable[[Any], str] = gguf_meta.file_digest,
-                 cpu_threads: Optional[Callable[[], int]] = None, ram_free_mb: Optional[Callable[[], Optional[int]]] = None):
+                 cpu_threads: Optional[Callable[[], int]] = None, ram_free_mb: Optional[Callable[[], Optional[int]]] = None,
+                 base_url: Callable[[], str] = lambda: ""):
         self.store, self.settings, self.gpus, self.launcher, self.backend_factory = store, settings, gpus, launcher, backend_factory
         self.images_dir, self.clock, self.sleep, self.family_call = images_dir, clock, sleep, family_call
         self.emit = emit or (lambda *_: None)
+        self.jobs = RunJobEvents(self.emit, clock=clock, base_url=base_url)
         self.client_factory = client_factory or (lambda: httpx.Client(trust_env=False, timeout=5.0))
         self.meta_reader, self.digest_fn = meta_reader, digest_fn
         self.cpu_threads = cpu_threads or (lambda: cpu_lib.cpu_threads())       # looked up when asked, so tests can replace the module's functions
@@ -217,7 +220,9 @@ class Runner:
         for c in rows:
             planned, notes = plans[c["id"]]
             self.store.upsert_run_contestant(run["id"], c["id"], state="queued", total=len(planned), done=0, digest=c["digest"], warnings=notes)
-        return self.store.run(run["id"])
+        created = self.store.run(run["id"])
+        self.jobs.queued(created)
+        return created
 
     @staticmethod
     def ensure_resumable(run: dict[str, Any]) -> None:
@@ -278,6 +283,7 @@ class Runner:
             self.store.update_run(run_id, state="cancelled", finished_ts=self.clock())
             for rc in self.store.run_contestants(run_id):
                 self.store.upsert_run_contestant(run_id, rc["contestant_id"], state="cancelled")
+            self.jobs.finished(self.store.run(run_id), "cancelled")
             return {"run": run_id, "state": "cancelled", "cancelled": True}
         return {"run": run_id, "state": run["state"], "cancelled": True, "note": self._stopping_note(run)}
 
@@ -715,6 +721,7 @@ class Runner:
             with lock:  # the write stays inside the lock: two checks finishing together must not store the counts out of order
                 progress["done"] += 1
                 self.store.upsert_run_contestant(run_id, cid, done=progress["done"])
+            self.jobs.progress(run, lambda: self._run_totals(run_id))
 
         wait = {"since": None, "total": 0.0}
 
@@ -744,6 +751,7 @@ class Runner:
                                                  gpus=session.gpus, device=session.device, context=session.context, warnings=[*notes, *session.warnings, *self._reasoning_warning(rs, session)])
                 started_with = [*notes, *session.warnings, *self._reasoning_warning(rs, session)]
                 shown[:] = started_with
+                self.jobs.set_gpu(run_id, session.gpus)
                 judge = self._judge_for(contestant, session, cancel)
                 # A judge that is this very server is not asked while the contestant is being measured: its grades wait (as pending) and are
                 # given right after the last case, so they cannot delay a question whose timing is recorded.
@@ -859,15 +867,23 @@ class Runner:
             settle_wait()
 
     # ------------------------------------------------------------------ executing a run
+    def _run_totals(self, run_id: str) -> tuple[int, int]:
+        """Cases done and planned over every contestant of the run (for the progress events)."""
+        rows = self.store.run_contestants(run_id)
+        return sum(int(r.get("done") or 0) for r in rows), sum(int(r.get("total") or 0) for r in rows)
+
     def execute(self, run_id: str) -> dict[str, Any]:
         run = self.store.run(run_id)
         if run["state"] != "queued":
             return run
         if self.is_cancelled(run_id) or run["cancel"]:
-            return self.store.update_run(run_id, state="cancelled", finished_ts=self.clock())
+            cancelled = self.store.update_run(run_id, state="cancelled", finished_ts=self.clock())
+            self.jobs.finished(cancelled, "cancelled")
+            return cancelled
         rs = normalise_settings(run["settings"])
         suites = [self.store.suite(s) for s in run["suites"]]
         self.store.update_run(run_id, state="running", started_ts=self.clock())
+        self.jobs.started(run)
         self.active_run = run_id
         outcomes: dict[str, str] = {}
         pool = ThreadPoolExecutor(max_workers=max(1, int(self.settings.get("runner.check_threads"))), thread_name_prefix="galton-check")
@@ -897,7 +913,7 @@ class Runner:
         else:
             state, error = "done", ""
         final = self.store.update_run(run_id, state=state, finished_ts=self.clock(), error=error, summary=summary)
-        self.emit(f"galton.run.{'done' if state == 'done' else state}", {"run": run_id, "state": state, "label": final["label"], "source": final["source"]})
+        self.jobs.finished(final, state, error)
         with self._lock:
             self._cancel.pop(run_id, None)
         return final

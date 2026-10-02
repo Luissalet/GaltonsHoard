@@ -19,7 +19,7 @@
                       ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
                       ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
                       └──► arena.py: blind pairs from stored answers, votes, ratings
- agent_tools.py: one catalogue (44 tools) ──► api/agent.py (Bearer token) · api/ui.py (local) · mcp_server.py (stdio bridge)
+ agent_tools.py: one catalogue (45 tools) ──► api/agent.py (Bearer token) · api/ui.py (local) · mcp_server.py (stdio bridge)
  scheduler.py: lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
 ```
 
@@ -75,6 +75,8 @@ A contestant is either a `server` (a URL, an API kind, either the chat-completio
 
 Judge cases are graded in the same pass when the judge is live; otherwise they wait as `judge_pending` and `judge_run` grades them later. When the judge is the very model (or the very server address) being measured, its grades are not asked between the questions: the answers are stored as pending and graded right after that contestant's last case, so grading never delays a question whose latency and first-token time are recorded.
 
+Job events: `jobevents.RunJobEvents` (owned by the runner) emits `galton.job.queued` when a run is created, `started` when it begins, `progress` (cases done over cases planned across all contestants, an `eta_s` estimate, the first GPU of the open session; at most one every 5 seconds), and `done`, `failed` or `cancelled` at the end (also for a run cancelled while queued and for a run found dead at start-up). Data: `{job_id, title, kind: "run", progress, gpu, eta_s, url, error}`; `url` points at `#/ejecutar/<run>` of this instance. The legacy `galton.run.done` is not emitted any more: the hub maps it onto `galton.job.done`. `Services.galton_run` (tool `galton_run {models}`) is the entry other apps use: names are resolved like `run_start`, with one rediscovery for names not seen yet and a `not_found` list for those still unknown.
+
 ## Statistics
 
 Speed is never mixed across devices: `stats.speed_by_device` summarises the GPU (and server) results of a contestant and only when there are none the CPU ones (`cpu: true`), keeping the CPU median apart when both exist; the leaderboard (`speed_cpu`, `decode_tps_cpu`), `compare`, `recommend` and the routes read speed through it, and `Routes.evaluate` ignores a CPU speed in the speed weight and the tie-break. Scores are device independent and use all results.
@@ -83,7 +85,7 @@ Results of the same case are averaged first: the case is the unit and repeats on
 
 ## Routing table
 
-`routes.py` evaluates each task category (`general`, `code`, `extraction`, `tool_use`, `long_context`, `rag`, `vision`, `summary`, `translation`, `math`, `writing_es`) against the suites that belong to it, applying the policy in `routes.policy`. `routes_get` shows the proposed table, the published one and the difference; `routes_publish` writes the file with a temporary file and `os.replace`, records the publication and emits `galton.routes.updated`. The schema is `{schema: 1, source: "galton", updated_at, tasks: {name: {capability, prefer: [{names, score, ci, n, tok_s, vram_gb}], explain}}, capabilities: {llm, vision}}`.
+`routes.py` evaluates each task category (`general`, `code`, `extraction`, `tool_use`, `long_context`, `rag`, `vision`, `summary`, `translation`, `math`, `writing_es`) against the suites that belong to it, applying the policy in `routes.policy`. `routes_get` shows the proposed table, the published one and the difference; `routes_publish` writes the file with a temporary file and `os.replace`, records the publication and emits `galton.routes.updated`. The file lives where Hoard Link reads it: `HOARD_ROUTES_FILE`, else `routes.json` in `HOARD_HOME`, else `~/.hoard/routes.json` (a test loads the published file with the vendored reader). The schema is `{schema: 1, source: "galton", updated_at, tasks: {name: {capability, prefer: [{names, score, ci, n, tok_s, vram_gb}], explain}}, capabilities: {llm, vision}}`.
 
 ## Watch
 
