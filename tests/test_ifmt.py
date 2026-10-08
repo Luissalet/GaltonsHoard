@@ -575,6 +575,8 @@ class TestRun:
         run = run_inline(svc, [suite], [model["id"]])
         assert run["state"] == "done"
         got = results(svc, run, model)
+        waiting = next(r for t, r in got.items() if t.startswith("style "))
+        assert waiting["judge_pending"] and waiting["detail"]["unjudged"] == ["style"] and waiting["detail"]["dimensions"][0]["score"] is None
         rule_only = [r for t, r in got.items() if t.split(" ")[0] in ("layout", "code", "structured")]
         assert len(rule_only) == 12 and all(r["score"] == 1.0 and r["passed"] and not r["judge_pending"] for r in rule_only)
         pending = [r for r in got.values() if r["judge_pending"]]
@@ -592,6 +594,7 @@ class TestRun:
         assert outcome["graded"] and outcome["pending"] == 0
         got = results(svc, run, model)
         assert not any(r["judge_pending"] for r in got.values())
+        assert all("unjudged" not in r["detail"] and "reason" not in r["detail"] for r in got.values()), "what waited for the judge no longer says so once graded"
         by_prefix = {}
         for title, r in got.items():
             by_prefix.setdefault(title.split(" ")[0], []).append(r["score"])

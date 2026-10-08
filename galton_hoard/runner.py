@@ -115,8 +115,9 @@ _endpoint = identity.endpoint     # ``host:port`` of an address, every spelling 
 
 
 def _without_wait_reason(detail: Any) -> dict[str, Any]:
-    """A stored detail without the note of why the answer waited for the judge: once graded, that note is no longer true."""
-    return {k: v for k, v in (detail or {}).items() if k != "reason"} if isinstance(detail, dict) else {}
+    """A stored detail without the note of why the answer waited for the judge (``reason``, and the ``unjudged`` list of the ``ifmt`` checker):
+    once graded, that note is no longer true."""
+    return {k: v for k, v in (detail or {}).items() if k not in ("reason", "unjudged")} if isinstance(detail, dict) else {}
 
 
 def _find_flag(detail: Any, flag: str) -> bool:
