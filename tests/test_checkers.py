@@ -554,7 +554,7 @@ def test_unknown_type_is_reported_never_a_pass():
 def test_registry_is_consistent():
     assert set(NON_DETERMINISTIC) <= set(CHECKERS)
     assert set(checker_types()) == set(CHECKERS) | {"all", "any"}
-    assert len(CHECKERS) == 15
+    assert len(CHECKERS) == 16
 
 
 def test_a_crashing_checker_does_not_raise(monkeypatch):

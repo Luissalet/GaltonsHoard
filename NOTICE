@@ -1,0 +1,19 @@
+Galton's Hoard is MIT licensed (see LICENSE). It contains material from, and uses data of, the work below.
+
+IFMTBench (instruction-following machine translation benchmark)
+  Copyright (C) 2026 Tencent. All rights reserved.
+  Source: https://github.com/Tencent-Hunyuan/Hy-MT2 (folder IFMTBench), commit ff1903ecaa724e10951a23c16817a2413c752b35.
+
+  Code: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0). The rule checks (glossary, layout,
+  structured data, code and tags), the two judge prompts, the reading of the judge's reply and the combination of
+  constraint scores in galton_hoard/checkers/ifmt.py are ported from IFMTBench/eval/rule_validators.py,
+  IFMTBench/eval/llm_judge.py and IFMTBench/eval/scoring.py. Changes: typed and split into smaller functions; the judge
+  is the model chosen in Galton's settings instead of a separate HTTP client; the answer is the visible text; an empty
+  answer scores 0; a constraint that could not be judged leaves the item unscored instead of being dropped from the
+  combination. The list is in docs/IFMTBENCH.md.
+
+  Data: Creative Commons Attribution 4.0 International (https://creativecommons.org/licenses/by/4.0/). The data files
+  are not part of this repository. galton_hoard/ifmtbench.py downloads them from the commit above when the user asks,
+  checks their SHA-256 and stores them in the data folder. The suite Galton builds from them is a sample selected and
+  arranged by Galton (a seeded stratified selection of items; the instruction of each item is used as given, the
+  reference translation is kept as the reference answer). Tencent does not endorse this project or its results.

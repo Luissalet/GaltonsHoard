@@ -12,6 +12,7 @@ import logging
 from typing import Any, Callable
 
 from .backends import Backend, ChatRequest
+from .checkers.ifmt import needs_judge
 from .checkers.judge import build_judge_messages, parse_judge_reply
 from .util import stable_hash
 
@@ -24,6 +25,8 @@ def has_judge(spec: dict[str, Any]) -> bool:
         return False
     if spec.get("type") == "judge":
         return True
+    if spec.get("type") == "ifmt":
+        return needs_judge(spec)
     return any(has_judge(c) for c in spec.get("checks", []) or [])
 
 
@@ -39,7 +42,7 @@ def make_ask(store: Any, backend: Backend, judge: dict[str, Any], tested_id: str
         completion = backend.chat(ChatRequest(messages=build_judge_messages(request), temperature=0.0, max_tokens=500, effort="off", timeout_s=120.0), cancel)
         if completion.error:
             return {"error": completion.error}
-        reply = parse_judge_reply(completion.text)
+        reply = parse_judge_reply(completion.text, request.get("parse", ""))
         if reply.get("error"):
             return reply
         reply["judge"] = judge["name"]

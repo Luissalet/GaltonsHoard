@@ -11,6 +11,7 @@ from typing import Any, Callable
 from .basic import check_choice, check_contains, check_exact, check_none, check_regex
 from .code import check_python_tests
 from .constraints import check_constraints
+from .ifmt import check_ifmt
 from .judge import check_family, check_judge
 from .jsoncheck import check_json, check_tool_call
 from .mathcheck import check_math
@@ -35,11 +36,12 @@ CHECKERS: dict[str, Checker] = {
     "citations": check_citations,
     "judge": check_judge,
     "family": check_family,
+    "ifmt": check_ifmt,
     "none": check_none,
 }
 COMBINATORS = ("all", "any")
 #: Checkers whose verdict depends on a model or another service, so the reference answer of a case cannot be verified offline.
-NON_DETERMINISTIC = frozenset({"judge", "family", "none"})
+NON_DETERMINISTIC = frozenset({"judge", "family", "ifmt", "none"})
 
 
 def checker_types() -> list[str]:

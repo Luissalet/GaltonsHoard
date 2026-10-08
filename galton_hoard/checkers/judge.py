@@ -10,6 +10,7 @@ import re
 from typing import Any
 
 from .basic import visible
+from .ifmt import REPLY_PARSERS
 from .jsoncheck import get_path
 from .textutil import extract_json, split_reasoning
 from .types import CheckContext, ModelOutput, bad_spec, unavailable, verdict
@@ -23,7 +24,10 @@ JUDGE_SYSTEM = (
 
 
 def build_judge_messages(request: dict[str, Any]) -> list[dict[str, str]]:
-    """The two messages sent to the judge model for ``request`` = {prompt, rubric, answer, reference?}."""
+    """The two messages sent to the judge model for ``request`` = {prompt, rubric, answer, reference?}. A request that brings its own ``messages``
+    (the ``ifmt`` checker: a benchmark's own judge prompt) is sent as it is."""
+    if request.get("messages"):
+        return list(request["messages"])
     parts = [f"PREGUNTA:\n{request.get('prompt', '').strip()}", f"RÚBRICA:\n{request['rubric'].strip()}"]
     if request.get("reference"):
         parts.append(f"RESPUESTA DE REFERENCIA (orientativa):\n{request['reference'].strip()}")
@@ -31,8 +35,11 @@ def build_judge_messages(request: dict[str, Any]) -> list[dict[str, str]]:
     return [{"role": "system", "content": JUDGE_SYSTEM}, {"role": "user", "content": "\n\n".join(parts)}]
 
 
-def parse_judge_reply(text: str) -> dict[str, Any]:
-    """``{score, reasons}`` from the judge's reply (JSON, or the first number out of 10 as a fallback). ``{"error": ...}`` when unreadable."""
+def parse_judge_reply(text: str, kind: str = "") -> dict[str, Any]:
+    """``{score, reasons}`` from the judge's reply (JSON, or the first number out of 10 as a fallback). ``{"error": ...}`` when unreadable.
+    ``kind`` names another reader (``REPLY_PARSERS``, used with the request's own ``messages``)."""
+    if kind in REPLY_PARSERS:
+        return REPLY_PARSERS[kind](text)
     visible_text = split_reasoning(text)[0]
     found = extract_json(visible_text, expect="object")
     if found and isinstance(found[0], dict) and "score" in found[0]:
