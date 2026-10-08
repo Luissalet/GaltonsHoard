@@ -59,6 +59,15 @@ function Leaderboard({ suites }) {
                     <b>{r.name}</b>
                     <div className="help">{[r.family, r.params_b ? `${num(r.params_b, 1, lang)} B` : "", r.quant].filter(Boolean).join(" · ")}</div>
                     {r.stale && <Chip className="chip-danger">{t("stale_model")}</Chip>}
+                    {Object.keys(r.constraints || {}).length > 0 && (
+                      <div className="mt-1 inline-flex flex-wrap gap-1" title={t("cst_hint")}>
+                        {Object.entries(r.constraints).map(([k, v]) => (
+                          <Chip key={k} className={v.pass_rate == null ? "chip-amber" : v.pass_rate < 0.5 ? "chip-danger" : ""} title={`${t("cst_title")}: n=${v.n}${v.unjudged ? ` · ${t("judge_pending_n", { n: v.unjudged })}` : ""}`}>
+                            {t(`cst_${k}`)} {v.pass_rate == null ? "—" : pct(v.pass_rate, 0, lang)}{v.unjudged > 0 && <> · {t("judge_pending_n", { n: v.unjudged })}</>}
+                          </Chip>
+                        ))}
+                      </div>
+                    )}
                     {r.warnings?.map((w, i) => <div key={i} className="banner banner-warn mt-1">{t.msg(w)}</div>)}
                   </td>
                   <td><Score value={r.score} ci={r.ci} /><CiBar value={r.score} ci={r.ci} /></td>

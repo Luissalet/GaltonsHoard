@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
-import { Busy, Chip, Drawer, Empty, ErrorBox, Field, Icon, ICONS, Modal, Section, Spinner, useBusy, useLoad } from "../components/ui.jsx";
+import { Busy, Chip, Drawer, Empty, ErrorBox, Field, Icon, ICONS, Modal, Section, Spinner, Switch, useBusy, useLoad } from "../components/ui.jsx";
 import { CpuBadge } from "../components/parts.jsx";
 import { CATEGORIES } from "../meta.js";
 import { duration, num, splitList } from "../format.js";
@@ -173,6 +173,47 @@ function ImportModal({ suite, onClose, onDone }) {
   );
 }
 
+function BenchmarkModal({ onClose, onDone }) {
+  const { t, notify } = useApp();
+  const [form, setForm] = useState({ name: "IFMTBench", per_type: 30, multi: 30, seed: 2026, keep: false });
+  const [busy, run] = useBusy();
+  const [result, setResult] = useState(null);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const go = () => run("bench", async () => {
+    const r = await api.call("benchmark_import", { source: "ifmtbench", name: form.name.trim(), per_type: Number(form.per_type) || 0, multi: Number(form.multi) || 0, seed: Number(form.seed) || 0, keep_unsatisfiable: form.keep });
+    setResult(r);
+    notify(t("bench_done", { n: r.cases }));
+    onDone(r.suite);
+  });
+  const left = Object.values(result?.left_out_unsatisfiable || {}).reduce((a, b) => a + b, 0);
+  return (
+    <Modal title={t("bench_title")} onClose={onClose} wide>
+      <div className="help">{t("bench_help")}</div>
+      <div className="help">{t("bench_judge_help")}</div>
+      <div className="help">{t("bench_credit")}</div>
+      <Field label={t("name")}><input className="field" value={form.name} onChange={set("name")} /></Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t("bench_per_type")} hint={t("bench_per_type_hint")}><input className="field" type="number" min="0" max="2000" value={form.per_type} onChange={set("per_type")} /></Field>
+        <Field label={t("bench_multi")} hint={t("bench_multi_hint")}><input className="field" type="number" min="0" max="2838" value={form.multi} onChange={set("multi")} /></Field>
+        <Field label={t("bench_seed")}><input className="field" type="number" min="0" value={form.seed} onChange={set("seed")} /></Field>
+      </div>
+      <label className="flex items-start gap-2"><Switch checked={form.keep} onChange={(v) => setForm((f) => ({ ...f, keep: v }))} label={t("bench_keep")} /><span><span>{t("bench_keep")}</span><span className="help block">{t("bench_keep_hint")}</span></span></label>
+      {busy.bench && <div className="help">{t("bench_downloading")}</div>}
+      {result && (
+        <div className="banner banner-info space-y-1">
+          <div>{t("bench_done", { n: result.cases })}{left ? ` · ${t("bench_left_out", { n: left })}` : ""}</div>
+          {result.notes?.map((n, i) => <div key={i} className="help">{t.msg(n)}</div>)}
+          <a className="btn btn-sm" href={`#/pruebas/${result.suite.id}`}>{t("bench_open")}</a>
+        </div>
+      )}
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn" onClick={onClose}>{result ? t("close") : t("cancel")}</button>
+        {!result && <Busy className="btn btn-primary" busy={busy.bench} disabled={!form.name.trim()} onClick={go}>{t("import")}</Busy>}
+      </div>
+    </Modal>
+  );
+}
+
 function NewSuiteModal({ onClose, onDone }) {
   const { t, notify } = useApp();
   const [form, setForm] = useState({ name: "", description: "", category: "custom", max_tokens: 512 });
@@ -297,6 +338,7 @@ export default function Pruebas({ param }) {
   const { t, version, changed } = useApp();
   const [category, setCategory] = useState("");
   const [creating, setCreating] = useState(false);
+  const [benchmark, setBenchmark] = useState(false);
   const { data, error, loading } = useLoad(() => api.call("suites_list", {}), [version]);
   if (param) return <SuiteDetail id={param} />;
   const suites = (data?.suites || []).filter((s) => !category || s.category === category);
@@ -304,6 +346,7 @@ export default function Pruebas({ param }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="mr-auto">{t("nav_tests")}</h1>
+        <button type="button" className="btn" onClick={() => setBenchmark(true)}><Icon d={ICONS.upload} size={14} />{t("import_benchmark")}</button>
         <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}><Icon d={ICONS.plus} size={14} />{t("new_suite")}</button>
       </div>
       <div style={{ width: 220 }}>
@@ -324,6 +367,7 @@ export default function Pruebas({ param }) {
         ))}
       </div>
       {creating && <NewSuiteModal onClose={() => setCreating(false)} onDone={(s) => { changed(); window.location.hash = `#/pruebas/${s.id}`; }} />}
+      {benchmark && <BenchmarkModal onClose={() => setBenchmark(false)} onDone={() => changed()} />}
     </div>
   );
 }
