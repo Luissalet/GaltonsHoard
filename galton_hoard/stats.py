@@ -96,6 +96,30 @@ def summarize(rows: Iterable[dict[str, Any]], *, seed: int = 20251) -> dict[str,
             "pass_rate": round(passed / n, 4), "pass_ci": [round(plo, 4), round(phi, 4)]}
 
 
+def constraint_breakdown(rows: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Per constraint (glossary, style, layout...) of the ``ifmt`` checker: over the cases that have it, the mean score, the share passed and how many
+    cases could not be judged. Repeats of a case are averaged first; a constraint only counts in the cases where it was scored, and the cases where it
+    was not (no judge yet) are reported as ``unjudged`` instead of being dropped without a word. ``rows``: ``{case_id, dimensions}``."""
+    cases: dict[str, dict[str, dict[str, list[float]]]] = defaultdict(lambda: defaultdict(lambda: {"score": [], "passed": [], "unjudged": []}))
+    for r in rows:
+        for d in r["dimensions"]:
+            slot = cases[d["class"]][r["case_id"]]
+            if d.get("score") is None:
+                slot["unjudged"].append(1.0)
+            else:
+                slot["score"].append(float(d["score"]))
+                slot["passed"].append(1.0 if d.get("passed") else 0.0)
+    out: dict[str, dict[str, Any]] = {}
+    for cls, per in cases.items():
+        scored = [v for v in per.values() if v["score"]]
+        n = len(scored)
+        out[cls] = {"n": n, "score": round(sum(sum(v["score"]) / len(v["score"]) for v in scored) / n, 4) if n else None,
+                    "pass_rate": round(sum(sum(v["passed"]) / len(v["passed"]) for v in scored) / n, 4) if n else None,
+                    "unjudged": sum(1 for v in per.values() if not v["score"])}
+    order = ("glossary", "style", "background", "layout", "structured", "code")
+    return dict(sorted(out.items(), key=lambda kv: (order.index(kv[0]) if kv[0] in order else len(order), kv[0])))
+
+
 #: a contestant with more than this share of cut-off results in a category is flagged: its score there understates the model
 TRUNCATED_WARN_SHARE = 0.05
 

@@ -424,6 +424,31 @@ class Store:
             return [_result(r) for r in self.db.query("SELECT * FROM results WHERE run_id = ? AND judge_pending = 1 ORDER BY id", (run_id,))]
         return [_result(r) for r in self.db.query(f"SELECT * FROM results WHERE judge_pending = 1 AND {LIVE} ORDER BY id")]
 
+    def constraint_rows(self, *, suite_ids: Iterable[str], contestant_ids: Optional[Iterable[str]] = None) -> list[dict[str, Any]]:
+        """``{contestant_id, digest, case_id, dimensions}`` of every result whose detail lists constraints (the ``ifmt`` checker), also those still
+        waiting for the judge or left unjudged: the rule-scored constraints of such a result are known. Skipped and failed requests and discarded runs are left out."""
+        ids = list(suite_ids)
+        if not ids:
+            return []
+        sql = (f"SELECT contestant_id, digest, case_id, detail FROM results WHERE skipped = 0 AND error = '' AND detail LIKE '%\"dimensions\"%' AND {LIVE} "
+               f"AND suite_id IN ({', '.join('?' for _ in ids)})")
+        params: list[Any] = list(ids)
+        if contestant_ids is not None:
+            who = list(contestant_ids)
+            if not who:
+                return []
+            sql += f" AND contestant_id IN ({', '.join('?' for _ in who)})"
+            params.extend(who)
+        out = []
+        for row in self.db.query(sql + " ORDER BY id", params):
+            try:
+                dimensions = json.loads(row["detail"]).get("dimensions")
+            except (ValueError, AttributeError):
+                continue
+            if isinstance(dimensions, list):
+                out.append({"contestant_id": row["contestant_id"], "digest": row["digest"], "case_id": row["case_id"], "dimensions": dimensions})
+        return out
+
     def scoring_rows(self, *, contestant_ids: Optional[Iterable[str]] = None, suite_ids: Optional[Iterable[str]] = None,
                      case_ids: Optional[Iterable[str]] = None, since_ts: float = 0.0, run_ids: Optional[Iterable[str]] = None) -> list[dict[str, Any]]:
         """Slim result rows (no text) for statistics. Skipped, unavailable and pending-judge rows are left out, and so are the results of discarded runs."""

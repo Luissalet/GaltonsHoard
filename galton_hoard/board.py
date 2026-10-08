@@ -90,6 +90,9 @@ class Board:
         for r in rows_all:
             by_c.setdefault(r["contestant_id"], []).append(r)
         board, unmeasured = [], []
+        by_constraint: dict[str, list[dict[str, Any]]] = {}
+        for r in (self.store.constraint_rows(suite_ids=suite_ids) if suite_ids else []):
+            by_constraint.setdefault(r["contestant_id"], []).append(r)
         last = self.store.last_measured()
         for c in self.store.contestants(include_missing=True):
             rows = by_c.get(c["id"], [])
@@ -116,11 +119,13 @@ class Board:
                                "truncated": cut[cat]["truncated"], "results": cut[cat]["results"]}
                 if cut[cat]["warn"]:
                     warnings.append(text("board_truncated", name=c["name"], n=cut[cat]["truncated"], total=cut[cat]["results"], category=cat, pct=round(100 * cut[cat]["share"])))
+            digest_ok = (lambda d: True) if (stale and include_stale) else (lambda d: not c["digest"] or d == c["digest"])
+            constraints = stats.constraint_breakdown([r for r in by_constraint.get(c["id"], []) if digest_ok(r["digest"])])
             board.append({
                 "contestant": c["id"], "name": c["name"], "kind": c["kind"], "provider": c["provider"], "family": c["family"], "params_b": c["params_b"], "quant": c["quant"],
                 "vision": c["vision"], "enabled": c["enabled"], "missing": c["missing"], "remote": c["remote"], "adhoc": c["adhoc"],
                 "score": summary["score"], "ci": summary["ci"], "pass_rate": summary["pass_rate"], "pass_ci": summary["pass_ci"], "n": summary["n"], "n_results": summary["n_results"],
-                "lower": summary["ci"][0] if summary["ci"] else None, "by_category": by_cat,
+                "lower": summary["ci"][0] if summary["ci"] else None, "by_category": by_cat, "constraints": constraints,
                 "decode_tps": speed["decode_tps_median"], "speed_cpu": speed["cpu"], "decode_tps_cpu": speed["cpu_decode_tps_median"], "decode_tps_p90": speed["decode_tps_p90"], "prompt_tps": speed["prompt_tps_median"], "ttft_ms": speed["ttft_ms_median"],
                 "memory_gb": mem, "memory_method": method, "fits_16gb": (mem <= FITS_16_GB) if mem is not None else None,
                 "stale": stale, "stale_n": len(rows) - len(fresh), "last_ts": (last.get(c["id"]) or {}).get("last_ts"),
