@@ -38,7 +38,8 @@ log = logging.getLogger("galton.runner")
 RESUMABLE = ("failed", "cancelled")
 #: the longest label a run gets when it is created from another one (the label of the run it continues, plus the suffix)
 LABEL_MAX = 80
-RUN_DEFAULTS: dict[str, Any] = {"temperature": 0.0, "top_p": None, "max_tokens": None, "effort": None, "repeats": 1, "seed": None, "context": None, "timeout_s": None, "wait_s": None, "device": "auto"}
+RUN_DEFAULTS: dict[str, Any] = {"temperature": 0.0, "top_p": None, "max_tokens": None, "effort": None, "repeats": 1, "seed": None, "context": None, "timeout_s": None, "wait_s": None, "device": "auto",
+                                "load_local": True}      # False: the run only uses what is already served; it never starts llama-server nor loads a model into Ollama (the watch sets it from watch.load_local)
 DEVICES = ("auto", "gpu", "cpu")
 TERMINAL = ("done", "failed", "cancelled")
 #: extra seconds of timeout per token of thinking allowance (a 27B model on one GPU thinks at 10-20 tokens per second; this leaves room for the slow end)
@@ -72,6 +73,12 @@ def normalise_settings(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
     number("context", 512, 1_048_576, True)
     number("timeout_s", 5, 3600)
     number("wait_s", 0, 7200)
+    load = out["load_local"]
+    if isinstance(load, str):
+        if load.strip().lower() not in ("1", "true", "yes", "on", "0", "false", "no", "off"):
+            raise GaltonError("invalid", "setting_bool", setting="load_local")
+        load = load.strip().lower() in ("1", "true", "yes", "on")
+    out["load_local"] = bool(load)
     out["device"] = str(out["device"]).strip().lower() or "auto"
     if out["device"] not in DEVICES:
         raise GaltonError("invalid", "setting_choice", setting="device", options=list(DEVICES))
@@ -217,6 +224,10 @@ class Runner:
             if c["missing"]:
                 raise GaltonError("not_found", "model_gone", name=c["name"])
             self.ensure_served(c)
+        if source != "watch":              # somebody asks for these models: whatever made the watch give up on them is theirs to try again
+            for c in rows:
+                if "watch_failed" in (c["meta"] or {}):
+                    self.store.update_contestant(c["id"], meta={k: v for k, v in c["meta"].items() if k != "watch_failed"})
         plans = {c["id"]: self.plan_cases(c, suite_rows, rs, continues) for c in rows}
         if continues and not any(planned for planned, _notes in plans.values()):
             raise GaltonError("invalid", "run_nothing_left", id=continues)
@@ -356,6 +367,8 @@ class Runner:
         if contestant["remote"] and not contestant["remote_ok"]:
             raise GaltonError("remote_not_allowed", "remote_not_allowed", name=contestant["name"])
         if contestant["kind"] == "gguf":
+            if rs.get("load_local") is False:
+                raise GaltonError("unavailable", "load_local_off", name=contestant["name"])
             with self._gguf_session(contestant, rs, cancel, note) as s:
                 yield s
         else:
@@ -463,7 +476,7 @@ class Runner:
                 guard_id = self._identity_guard(c, served, "ollama", url) if served is not None else None
                 resident = self._ollama_resident(client, url, model)
                 if resident is None:
-                    if not self.settings.get("runner.allow_ollama_load"):
+                    if not self.settings.get("runner.allow_ollama_load") or rs.get("load_local") is False:
                         raise GaltonError("unavailable", "ollama_not_loaded", name=c["name"])
                     need = int((c.get("size_bytes") or 0) * gguf_meta.FILE_FACTOR / (1024 * 1024)) + gguf_meta.HEADROOM_MB
                     note("waiting_gpu")

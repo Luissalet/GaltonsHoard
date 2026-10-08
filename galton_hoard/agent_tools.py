@@ -240,7 +240,7 @@ class RunSpec(BaseModel):
     suites: list[str] = Field(..., min_length=1, max_length=40, description="Suite ids, slugs or names; ['all'] means every suite but the quick one.")
     contestants: list[Union[str, dict[str, Any]]] = Field(..., min_length=1, max_length=40, description="Model ids or names, or specs: {kind: 'gguf', path: 'D:\\\\m\\\\x.gguf', mmproj?}, "
                                                                                                           "{kind: 'ollama', model: 'qwen3:8b'}, {kind: 'server', url: 'http://127.0.0.1:8081', model: '…'}.")
-    settings: dict[str, Any] = Field(default_factory=dict, description=f"Run settings: {', '.join(RUN_DEFAULTS)}. effort is off|low|medium|high|max. device is auto|gpu|cpu: auto runs a small GGUF (file up to runner.cpu_max_gb) on the CPU when no allowed GPU is free, gpu never does, cpu always does. A model that reasons gets runner.reasoning_tokens more tokens than the answer budget, unless effort is off.")
+    settings: dict[str, Any] = Field(default_factory=dict, description=f"Run settings: {', '.join(RUN_DEFAULTS)}. effort is off|low|medium|high|max. device is auto|gpu|cpu: auto runs a small GGUF (file up to runner.cpu_max_gb) on the CPU when no allowed GPU is free, gpu never does, cpu always does. A model that reasons gets runner.reasoning_tokens more tokens than the answer budget, unless effort is off. load_local=false makes the run refuse to start llama-server or load a model into Ollama (it only uses what is already served).")
 
 
 class RunStartArgs(RunSpec):
@@ -357,7 +357,7 @@ def _model(svc: Services, ref: str) -> dict[str, Any]:
 
 def _slim_model(card: dict[str, Any]) -> dict[str, Any]:
     keys = ("id", "name", "kind", "provider", "family", "params_b", "quant", "context", "vision", "enabled", "missing", "remote", "remote_ok", "adhoc", "source", "up", "resident",
-            "measured_n", "last_measured_ts", "stale", "never_measured", "memory_gb", "fits_one_16gb", "demo", "same_weights", "not_chat", "not_served")
+            "measured_n", "last_measured_ts", "stale", "never_measured", "memory_gb", "fits_one_16gb", "demo", "same_weights", "not_chat", "not_served", "network", "watch_gave_up")
     return {k: card.get(k) for k in keys}
 
 

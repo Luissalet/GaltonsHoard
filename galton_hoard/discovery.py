@@ -62,6 +62,33 @@ def host_port(url: str) -> str:
     return f"{(parts.hostname or '').lower()}:{parts.port or 80}"
 
 
+#: the source of a model served by another machine of the person's own network (a DGX Spark cluster, say)
+LAN_SOURCE = "lan"
+#: at most this many servers of the local network are asked on one refresh, each for at most ``LAN_TIMEOUT_S`` seconds, so a refresh never hangs on them
+LAN_MAX_SERVERS = 16
+LAN_TIMEOUT_S = 3.0
+PROMETHEUS_TIMEOUT_S = 8.0
+QUANT_WORDS = re.compile(r"(nvfp4|mxfp4|fp8|fp4|awq|gptq|int8|int4)", re.I)
+
+
+def lan_base(url: Any) -> str:
+    """``http://host:port`` of a model address as Faustus lists it (``http://192.168.0.185:8003/v1/chat/completions``): the root of the server, which
+    is how every other server contestant is addressed. Empty when there is no host."""
+    try:
+        parts = urlsplit(str(url or "").strip())
+        host, port = (parts.hostname or "").lower(), parts.port
+    except ValueError:
+        return ""
+    if not host:
+        return ""
+    return f"{parts.scheme or 'http'}://{'[' + host + ']' if ':' in host else host}{f':{port}' if port else ''}"
+
+
+def lan_key(base: str, model: str) -> str:
+    """The key of a contestant served over the local network: the same server and model are always the same contestant, up or down."""
+    return f"server:{LAN_SOURCE}:{host_port(base)}:{model}"
+
+
 class Discovery:
     def __init__(self, store: Any, settings: Any, *, client_factory: Optional[Callable[[], httpx.Client]] = None, clock: Callable[[], float] = time.time,
                  meta_reader: Callable[[Any], dict[str, Any]] = gguf_meta.read_meta, digest_fn: Callable[[Any], str] = gguf_meta.file_digest, offline: bool = False,
@@ -315,10 +342,12 @@ class Discovery:
         return _merge_aliases(out)
 
     # ------------------------------------------------------------------ Faustus
-    def _faustus(self, client: httpx.Client, summary: dict[str, Any]) -> None:
+    def _faustus(self, client: httpx.Client, summary: dict[str, Any]) -> Optional[list[dict[str, Any]]]:
+        """Servers of this machine that the registry lists. Returns the registry's items (the local-network ones are handled by ``_lan``), or ``None``
+        when Faustus was not asked or did not answer."""
         base = str(self.settings.get("faustus.url") or "").rstrip("/")
         if not base:
-            return
+            return None
         token = str(self.settings.get("faustus.token") or self.token_fallback() or "")
         try:
             response = client.get(base + "/api/models", headers=_faustus.auth_headers(token) or {})
@@ -326,10 +355,12 @@ class Discovery:
             items = _faustus.model_items(response.json())
         except (httpx.HTTPError, ValueError) as exc:
             summary["sources"]["faustus"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-            return
+            return None
         known = {host_port(c["url"]): c for c in self.store.contestants(kind="server") if c["url"]}
         added = 0
         for item in items:
+            if _faustus.is_lan_item(item):
+                continue                      # a model served by another machine: its own entry per model, checked against that server (``_lan``)
             if not _faustus.is_local_item(item) or item.get("model_type") not in ("llm", "vision", "chat", None):
                 continue
             url = str(item.get("url"))
@@ -345,6 +376,97 @@ class Discovery:
                                                              "provider": "ollama" if api == "ollama" else "openai_compat", "aliases": [name], "source": "faustus", "meta": {"up": None}}, summary)
             added += 1
         summary["sources"]["faustus"] = {"ok": True, "items": len(items), "added": added}
+        return items
+
+    # ------------------------------------------------------------------ models served by other machines of the person's own network
+    def _lan_endpoints(self, client: httpx.Client, items: Optional[list[dict[str, Any]]], summary: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], str]:
+        """``({base url: {name, models, vision, context}}, via)``: the servers of the local network that the Faustus registry lists as local language
+        models (``via`` ``faustus``). When it lists none, or is not answering, Prometheus's Hoard is asked instead (``prometheus``)."""
+        found: dict[str, dict[str, Any]] = {}
+        for item in items or []:
+            if not (_faustus.is_lan_item(item) and _faustus.is_local_item(item)) or item.get("model_type") != "llm":
+                continue
+            base = lan_base(item.get("url"))
+            if not base:
+                continue
+            models = [str(m) for m in (item.get("models") or ([item["model"]] if item.get("model") else [])) if m]
+            entry = found.setdefault(base, {"name": str(item.get("endpoint_name") or item.get("name") or ""), "models": [], "vision": set(), "context": {}})
+            entry["models"] += [m for m in models if m not in entry["models"]]
+            entry["vision"] |= {str(m) for m in item.get("models_vision") or []}
+        if found:
+            return found, "faustus"
+        base = str(self.settings.get("prometheus.url") or "").rstrip("/")
+        if not base:
+            return found, "none"
+        try:
+            response = client.get(base + "/api/endpoints", timeout=PROMETHEUS_TIMEOUT_S)
+            response.raise_for_status()
+            listed = response.json().get("endpoints") or []
+        except (httpx.HTTPError, ValueError, AttributeError) as exc:
+            summary["sources"]["prometheus"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+            return found, "none"
+        for endpoint in listed:
+            if not isinstance(endpoint, dict) or _faustus.host_scope(endpoint.get("base_url")) != "lan":
+                continue
+            root = lan_base(endpoint.get("base_url"))
+            if not root:
+                continue
+            models = [str(m) for m in endpoint.get("models") or [] if m]
+            entry = found.setdefault(root, {"name": str(endpoint.get("title") or endpoint.get("recipe") or ""), "models": [], "vision": set(), "context": {}})
+            entry["models"] += [m for m in models if m not in entry["models"]]
+            if isinstance(endpoint.get("max_model_len"), int):
+                entry["context"] = {m: endpoint["max_model_len"] for m in models}
+        summary["sources"]["prometheus"] = {"ok": True, "endpoints": len(listed), "lan": len(found)}
+        return found, "prometheus"
+
+    def _lan_listing(self, client: httpx.Client, base: str) -> Optional[dict[str, dict[str, Any]]]:
+        """``{model id: its /v1/models entry}`` of a server that answers, ``None`` when it does not (a bounded wait, never an error)."""
+        try:
+            response = client.get(base + "/v1/models", timeout=LAN_TIMEOUT_S)
+            if response.status_code != 200:
+                return None
+            data = response.json().get("data") or []
+        except (httpx.HTTPError, ValueError, AttributeError):
+            return None
+        return {str(m["id"]): m for m in data if isinstance(m, dict) and m.get("id")}
+
+    def _lan(self, client: httpx.Client, summary: dict[str, Any], items: Optional[list[dict[str, Any]]]) -> set[str]:
+        """The language models that other machines of the person's own network serve become contestants of kind ``server``: one per model that
+        the registry lists and that the server's own ``/v1/models`` confirms. They are the person's own, so they are not ``remote``. The key is
+        the server's address plus the model id, so a server that stops and comes back is the same contestant: while it is not answering the
+        contestant is ``up: false`` (never deleted, its measurements stay)."""
+        endpoints, via = self._lan_endpoints(client, items, summary)
+        consulted = items is not None or via == "prometheus"
+        seen: set[str] = set()
+        servers = models = new = 0
+        for base, info in list(endpoints.items())[:LAN_MAX_SERVERS]:
+            listing = self._lan_listing(client, base)
+            if listing is None:
+                continue                                  # not answering: the contestants below it are marked down at the end
+            servers += 1
+            host = host_port(base)
+            for model in info["models"] or list(listing):
+                if model not in listing:
+                    continue                              # the registry knows it, the server does not serve it now
+                entry = listing[model]
+                key = lan_key(base, model)
+                context = entry.get("max_model_len") if isinstance(entry.get("max_model_len"), int) else info["context"].get(model)
+                quant = gguf_meta.quant_from_name(model) or (QUANT_WORDS.search(model).group(1).upper() if QUANT_WORDS.search(model) else "")
+                before = len(summary["new"])
+                self._upsert(key, {
+                    "kind": "server", "name": model, "url": base, "api": "openai", "model": model, "provider": "openai_compat", "remote": False,
+                    "aliases": _merge_aliases(name_variants(model), [info["name"]] if info["name"] else []), "family": model.split("-")[0], "params_b": gguf_meta.params_from_text(model),
+                    "quant": quant, "context": context, "vision": model in info["vision"], "source": LAN_SOURCE,
+                    "meta": {"up": True, "network": "lan", "host": host, "endpoint": info["name"], "via": via}}, summary)
+                new += len(summary["new"]) - before
+                seen.add(key)
+                models += 1
+        if consulted:
+            for c in self.store.contestants(kind="server", include_missing=True, include_adhoc=True):
+                if c["source"] == LAN_SOURCE and c["key"] not in seen and c["meta"].get("up") is not False:
+                    self.store.update_contestant(c["id"], meta={**c["meta"], "up": False})      # down, not gone: its results stay
+        summary["sources"]["lan"] = {"ok": consulted, "via": via, "servers": servers, "asked": min(len(endpoints), LAN_MAX_SERVERS), "models": models, "added": new}
+        return seen
 
     # ------------------------------------------------------------------ GGUF folders
     def _folders(self, summary: dict[str, Any]) -> set[str]:
@@ -418,7 +540,8 @@ class Discovery:
             ollama_seen = self._ollama(client, summary)
             seen |= ollama_seen
             seen |= self._llama(client, summary)
-            self._faustus(client, summary)
+            registry = self._faustus(client, summary)
+            seen |= self._lan(client, summary, registry)
             self._check_served(client, summary)
         summary["same_weights"] = self._link_same_weights()
         folder_seen = self._folders(summary)

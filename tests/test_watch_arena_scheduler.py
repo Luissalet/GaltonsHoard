@@ -88,6 +88,7 @@ def test_offline_watch_does_not_touch_the_network(svc):
 # ---- watch: eligibility and ticks -------------------------------------------------------------------------------------------------------------
 
 def test_candidates_are_models_not_yet_measured_on_the_quick_suite(svc, clock):
+    svc.settings.set_many({"watch.load_local": True})
     add_gguf(svc, "nuevo")
     b = add_gguf(svc, "viejo")
     run_inline(svc, ["rapida"], [b["id"]])
@@ -108,12 +109,14 @@ def test_server_candidates_wait_until_they_are_loaded_and_idle(svc, clock):
 
 
 def test_a_gguf_that_cannot_fit_is_not_eligible(svc):
+    svc.settings.set_many({"watch.load_local": True})
     huge = add_gguf(svc, "inmenso", size_gb=80.0)
     ok, why = svc.watch._eligible(svc.store.contestant(huge["id"]))
     assert not ok and "GB" in why
 
 
 def test_tick_queues_one_quick_run_for_a_gguf_with_room(svc, clock):
+    svc.settings.set_many({"watch.load_local": True})
     noon(clock)
     m = add_gguf(svc, "nuevo")
     decision = svc.watch.tick()
@@ -126,6 +129,7 @@ def test_tick_queues_one_quick_run_for_a_gguf_with_room(svc, clock):
 
 def test_tick_runs_at_most_one_model_at_a_time(svc, clock):
     noon(clock)
+    svc.settings.set_many({"watch.load_local": True})
     watch = Watch(svc.store, svc.settings, svc.runner, svc.gpus, clock=clock, submit_run=lambda _id: None, offline=True)
     add_gguf(svc, "uno"), add_gguf(svc, "dos")
     first = watch.tick()
@@ -144,6 +148,7 @@ def test_tick_respects_the_switches(svc, clock, setting, value, reason):
 
 
 def test_tick_never_runs_in_quiet_hours(svc, clock):
+    svc.settings.set_many({"watch.load_local": True})
     clock.now = datetime(2026, 3, 4, 3, 0).timestamp()
     add_gguf(svc, "nuevo")
     assert svc.watch.tick()["skipped"] == "quiet hours"
@@ -152,6 +157,7 @@ def test_tick_never_runs_in_quiet_hours(svc, clock):
 
 
 def test_tick_reports_why_nobody_was_queued(svc, clock):
+    svc.settings.set_many({"watch.load_local": True})
     noon(clock)
     add_gguf(svc, "inmenso", size_gb=80.0)
     decision = svc.watch.tick()

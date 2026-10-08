@@ -1,8 +1,12 @@
 """Regression watch: notice new and changed models, measure them with the quick suite when that disturbs nobody, and say so when one got worse.
 
 * A model that is new, or whose digest changed, or that was never measured on the quick suite, is a candidate.
-* A candidate is measured automatically only when (a) it is already loaded on a shared server that has been idle for ``watch.idle_min`` minutes, or
-  (b) it is a GGUF and an allowed GPU has room right now. The watch never queues for a GPU and never runs in quiet hours (default 01:00-08:00).
+* A candidate is measured automatically only when (a) it is already served by a shared server (a llama-server or Ollama on this PC, or a server of
+  another machine of the person's network) that has been idle for ``watch.idle_min`` minutes, or (b) ``watch.load_local`` is on, it is a GGUF and an
+  allowed GPU has room right now. With ``watch.load_local`` off (the default) the watch never starts a llama-server or loads a model into Ollama on
+  this PC. The watch never queues for a GPU and never runs in quiet hours (default 01:00-08:00).
+* A model the watch failed to measure is not tried again by the watch until its file (digest, path) or its server changes, or somebody runs it by
+  hand: the reason stays on the model (``meta.watch_failed``), and the failure is announced once, not on every cycle.
 * After a run, each model's results are compared with the ones it had before its last digest change; a significantly worse result raises a notice
   and the family event ``galton.regression``.
 """
@@ -24,6 +28,19 @@ from .store import ACTIVE_RUN_STATES
 
 log = logging.getLogger("galton.watch")
 SMOKE_SUITE = "s_rapida"
+#: failures that say nothing about the model itself (somebody was using the server, the server did not answer, a GPU was taken in between): the watch
+#: may look again at the next interval, so it does not stop trying; they are still announced only once per model, file and reason
+TRANSIENT = frozenset({"server_busy", "no_gpu_free", "no_gpu", "server_unverified", "server_changed", "model_not_served", "server_no_answer", "ollama_no_answer",
+                       "ollama_not_loaded", "cancelled_loading", "cpu_no_ram", "load_local_off"})
+
+
+def failure_of(c: dict[str, Any]) -> Optional[dict[str, Any]]:
+    """What the watch recorded when it failed to measure this model, while it still stands for the same file and server; ``None`` otherwise."""
+    failed = (c.get("meta") or {}).get("watch_failed")
+    if not isinstance(failed, dict):
+        return None
+    same = failed.get("digest") == c["digest"] and failed.get("path") == c["path"] and failed.get("url") == c["url"] and failed.get("model") == c["model"]
+    return failed if same else None
 
 
 class Watch:
@@ -77,6 +94,8 @@ class Watch:
                 except (httpx.HTTPError, ValueError):
                     resident = False
                 if resident:
+                    if c["meta"].get("up") is False:
+                        self._server_is_back(c)
                     self._seen.setdefault(c["id"], now)
                     up += 1
                 else:
@@ -88,21 +107,68 @@ class Watch:
 
     # ------------------------------------------------------------------ who needs measuring
     def candidates(self) -> list[dict[str, Any]]:
-        """Models never measured on the quick suite at their current digest, and not tried by the watch within one interval."""
+        """Models never measured on the quick suite at their current digest, not tried by the watch within one interval, and not given up on (a
+        failure the watch recorded for the file and server they have now). Models that would have to be loaded on this PC are left out while
+        ``watch.load_local`` is off."""
         suite = self.store.find_suite(SMOKE_SUITE)
         if suite is None:
             return []
         measured = {(r["contestant_id"], r["digest"]) for r in self.store.scoring_rows(suite_ids=[suite["id"]])}
         horizon = self.clock() - float(self.settings.get("watch.interval_h")) * 3600
         tried = {cid for run in self.store.runs(source="watch", limit=200) if run["created_ts"] >= horizon for cid in run["contestants"]}
+        loads = bool(self.settings.get("watch.load_local"))
         out = []
         for c in self.store.contestants(enabled=True, include_missing=False, include_adhoc=False):
             if c["remote"] or c["id"] in tried or (c["id"], c["digest"]) in measured or (c["meta"] or {}).get("not_served"):
                 continue
+            if failure_of(c) is not None or (c["kind"] == "gguf" and not loads):
+                continue
             out.append(c)
         return out
 
+    def held_back(self) -> list[dict[str, Any]]:
+        """Models the watch would measure if it were allowed to load them on this PC (``watch.load_local`` is off): what it leaves alone, and why."""
+        if self.settings.get("watch.load_local"):
+            return []
+        suite = self.store.find_suite(SMOKE_SUITE)
+        if suite is None:
+            return []
+        measured = {(r["contestant_id"], r["digest"]) for r in self.store.scoring_rows(suite_ids=[suite["id"]])}
+        return [c for c in self.store.contestants(kind="gguf", enabled=True, include_missing=False, include_adhoc=False)
+                if not c["remote"] and (c["id"], c["digest"]) not in measured and failure_of(c) is None]
+
+    # ------------------------------------------------------------------ giving up on a model
+    def _server_is_back(self, c: dict[str, Any]) -> None:
+        """A server that was not answering answers again: it is up, and whatever kept the watch from its model may be gone, so the watch may look again."""
+        fresh = self.store.contestant(c["id"])
+        self.store.update_contestant(c["id"], meta={**{k: v for k, v in fresh["meta"].items() if k != "watch_failed"}, "up": True})
+
+    def record_outcome(self, run_id: str) -> list[str]:
+        """After a run: a model that failed is marked (why, and for which file and server), so the watch does not start it again by itself; a model
+        that was measured loses the mark (and one that somebody runs by hand loses it when the run is created, see ``Runner.create``). A failure
+        that says nothing about the model (``TRANSIENT``) marks nothing. Returns the ids of the models marked."""
+        run = self.store.find_run(run_id)
+        if run is None:
+            return []
+        marked = []
+        for rc in self.store.run_contestants(run_id):
+            c = self.store.find_contestant(rc["contestant_id"])
+            if c is None:
+                continue
+            meta = dict(c["meta"] or {})
+            if rc["state"] == "done" and "watch_failed" in meta:
+                meta.pop("watch_failed")
+                self.store.update_contestant(c["id"], meta=meta)
+            elif rc["state"] == "failed" and getattr(rc["error"], "key", "") not in TRANSIENT:
+                meta["watch_failed"] = {"ts": self.clock(), "run": run_id, "error": str(rc["error"] or ""), "key": getattr(rc["error"], "key", ""), "digest": c["digest"],
+                                        "path": c["path"], "url": c["url"], "model": c["model"]}
+                self.store.update_contestant(c["id"], meta=meta)
+                marked.append(c["id"])
+        return marked
+
     def _eligible(self, c: dict[str, Any]) -> tuple[bool, str]:
+        if c["kind"] != "server" and not self.settings.get("watch.load_local"):
+            return False, "loading models on this PC is off (watch.load_local)"
         if c["kind"] == "server":
             idle = self.idle_for(c["id"])
             if idle is None:
@@ -150,11 +216,15 @@ class Watch:
             reasons[c["name"]] = why
             if not ok:
                 continue
-            run = self.runner.create(suites=[SMOKE_SUITE], contestants=[c["id"]], settings={"wait_s": 0, "device": "gpu"}, label=text("label_watch", name=c["name"]), source="watch", caller="watch")
+            run = self.runner.create(suites=[SMOKE_SUITE], contestants=[c["id"]], settings={"wait_s": 0, "device": "gpu", "load_local": bool(self.settings.get("watch.load_local"))},
+                                     label=text("label_watch", name=c["name"]), source="watch", caller="watch")
             self.submit_run(run["id"])
             decision["queued"] = {"run": run["id"], "contestant": c["name"], "why": why}
             return decision
         decision["waiting"] = reasons
+        held = self.held_back()
+        if held:
+            decision["held_back"] = {"setting": "watch.load_local", "models": [c["name"] for c in held]}
         return decision
 
     # ------------------------------------------------------------------ regressions

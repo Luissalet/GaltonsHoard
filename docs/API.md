@@ -313,7 +313,7 @@ Annotations: openWorldHint.
 | `expected` (string) | no |  |
 | `checker` (object/string/null) | no |  |
 | `tools` (array) | no |  |
-| `settings` (object) | no | Run settings: temperature, top_p, max_tokens, effort, repeats, seed, context, timeout_s, wait_s, device. |
+| `settings` (object) | no | Run settings: temperature, top_p, max_tokens, effort, repeats, seed, context, timeout_s, wait_s, device, load_local. |
 
 ## `run_plan`
 
@@ -328,7 +328,7 @@ Annotations: readOnlyHint, idempotentHint.
 |---|---|---|
 | `suites` (array) | yes | Suite ids, slugs or names; ['all'] means every suite but the quick one. |
 | `contestants` (array) | yes | Model ids or names, or specs: {kind: 'gguf', path: 'D:\\m\\x.gguf', mmproj?}, {kind: 'ollama', model: 'qwen3:8b'}, {kind: 'server', url: 'http://127.0.0.1:8081', model: '…'}. |
-| `settings` (object) | no | Run settings: temperature, top_p, max_tokens, effort, repeats, seed, context, timeout_s, wait_s, device. effort is off\|low\|medium\|high\|max. device is auto\|gpu\|cpu: auto runs a small GGUF (file up to runner.cpu_max_gb) on the CPU when no allowed GPU is free, gpu never does, cpu always does. A model that reasons gets runner.reasoning_tokens more tokens than the answer budget, unless effort is off. |
+| `settings` (object) | no | Run settings: temperature, top_p, max_tokens, effort, repeats, seed, context, timeout_s, wait_s, device, load_local. effort is off\|low\|medium\|high\|max. device is auto\|gpu\|cpu: auto runs a small GGUF (file up to runner.cpu_max_gb) on the CPU when no allowed GPU is free, gpu never does, cpu always does. A model that reasons gets runner.reasoning_tokens more tokens than the answer budget, unless effort is off. load_local=false makes the run refuse to start llama-server or load a model into Ollama (it only uses what is already served). |
 
 ## `run_start`
 
@@ -343,7 +343,7 @@ Annotations: openWorldHint.
 |---|---|---|
 | `suites` (array) | yes | Suite ids, slugs or names; ['all'] means every suite but the quick one. |
 | `contestants` (array) | yes | Model ids or names, or specs: {kind: 'gguf', path: 'D:\\m\\x.gguf', mmproj?}, {kind: 'ollama', model: 'qwen3:8b'}, {kind: 'server', url: 'http://127.0.0.1:8081', model: '…'}. |
-| `settings` (object) | no | Run settings: temperature, top_p, max_tokens, effort, repeats, seed, context, timeout_s, wait_s, device. effort is off\|low\|medium\|high\|max. device is auto\|gpu\|cpu: auto runs a small GGUF (file up to runner.cpu_max_gb) on the CPU when no allowed GPU is free, gpu never does, cpu always does. A model that reasons gets runner.reasoning_tokens more tokens than the answer budget, unless effort is off. |
+| `settings` (object) | no | Run settings: temperature, top_p, max_tokens, effort, repeats, seed, context, timeout_s, wait_s, device, load_local. effort is off\|low\|medium\|high\|max. device is auto\|gpu\|cpu: auto runs a small GGUF (file up to runner.cpu_max_gb) on the CPU when no allowed GPU is free, gpu never does, cpu always does. A model that reasons gets runner.reasoning_tokens more tokens than the answer budget, unless effort is off. load_local=false makes the run refuse to start llama-server or load a model into Ollama (it only uses what is already served). |
 | `label` (string) | no |  |
 | `wait_s` (number) | no | Wait this long for the run to finish before answering (0: return at once with the run id). |
 

@@ -62,6 +62,7 @@ SPECS: list[Spec] = [
     Spec("ollama.models_dir", "str", "", "discovery"),
     Spec("faustus.url", "str", "http://127.0.0.1:7000", "discovery"),
     Spec("faustus.token", "secret", "", "discovery"),
+    Spec("prometheus.url", "str", "http://127.0.0.1:5205", "discovery"),
     Spec("judge.contestant", "str", "", "judge"),
     Spec("runner.idle_grace_s", "int", 20, "runner", low=0, high=3600),
     Spec("runner.wait_idle_max_s", "int", 3600, "runner", low=0, high=604_800),
@@ -79,6 +80,7 @@ SPECS: list[Spec] = [
     Spec("watch.enabled", "bool", True, "watch"),
     Spec("watch.interval_h", "float", 6.0, "watch", low=0.05, high=168),
     Spec("watch.auto_smoke", "bool", True, "watch"),
+    Spec("watch.load_local", "bool", False, "watch"),      # False: the watch only measures models that are already served (it never starts llama-server or loads into Ollama on this PC)
     Spec("watch.quiet_from", "hour", 1, "watch", low=0, high=24),
     Spec("watch.quiet_to", "hour", 8, "watch", low=0, high=24),
     Spec("watch.idle_min", "int", 10, "watch", low=0, high=1440),

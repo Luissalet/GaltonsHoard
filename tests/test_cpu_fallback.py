@@ -141,6 +141,7 @@ def test_forcing_the_cpu_without_enough_memory_says_so(busy):
 
 
 def test_the_watch_never_puts_a_background_run_on_the_cpu(busy):
+    busy.settings.set_many({"watch.load_local": True})
     m = small(busy)
     ok, why = busy.watch._eligible(m)
     assert ok is False and "no allowed GPU" in why

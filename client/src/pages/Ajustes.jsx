@@ -148,7 +148,8 @@ export default function Ajustes() {
           {field("ollama.models_dir", t("ollama_dir"), t("ollama_dir_hint"))}
           {field("faustus.url", t("registry_url"))}
           {field("faustus.token", t("registry_token"))}
-          {saveBar(["gguf.folders", "ollama.url", "ollama.models_dir", "faustus.url", "faustus.token"])}
+          {field("prometheus.url", t("prometheus_url"))}
+          {saveBar(["gguf.folders", "ollama.url", "ollama.models_dir", "faustus.url", "faustus.token", "prometheus.url"])}
         </div>
       </Section>
 
@@ -190,6 +191,7 @@ export default function Ajustes() {
           <p className="help">{t("watch_help")}</p>
           {field("watch.enabled", t("watch_enabled"))}
           {field("watch.auto_smoke", t("watch_smoke"), t("watch_smoke_hint"))}
+          {field("watch.load_local", t("watch_load_local"), t("watch_load_local_hint"))}
           <div className="grid gap-3 md:grid-cols-4">
             {field("watch.interval_h", t("watch_interval"))}
             {field("watch.idle_min", t("watch_idle"))}
@@ -197,7 +199,7 @@ export default function Ajustes() {
             {field("watch.quiet_to", t("quiet_to"))}
           </div>
           {field("scheduler.paused", t("scheduler_paused"))}
-          {saveBar(["watch.enabled", "watch.auto_smoke", "watch.interval_h", "watch.idle_min", "watch.quiet_from", "watch.quiet_to", "scheduler.paused"])}
+          {saveBar(["watch.enabled", "watch.auto_smoke", "watch.load_local", "watch.interval_h", "watch.idle_min", "watch.quiet_from", "watch.quiet_to", "scheduler.paused"])}
         </div>
       </Section>
 

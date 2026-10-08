@@ -98,6 +98,8 @@ ERRORS: dict[str, tuple[str, str]] = {
         "Run it again later, or raise runner.wait_idle_max_s (0 waits for ever); Galton does not compete with your chats."),
     "ollama_not_loaded": ("{name} is not loaded in Ollama and loading it is switched off.",
                           "Enable runner.allow_ollama_load, or measure it through llama.cpp (the file-based entry of the same model)."),
+    "load_local_off": ("{name} would have to be loaded on this PC, and this run does not load models.",
+                       "Start it on a server first, or run it yourself: the watch only loads models on this PC when watch.load_local is on."),
     "ollama_no_answer": ("Ollama at {url} does not answer.", "Start Ollama, or refresh the models."),
     "no_llama_server": ("llama-server was not found (looked for {where} and for llama-server on PATH).",
                         "Set the path of llama-server in Settings > Runner, or run the model on a server that is already up."),
@@ -237,6 +239,8 @@ TEXTS: dict[str, str] = {
     # servers that are not chat models
     "not_chat_no_template": "This server has no chat template: it is not a chat model.",
     "not_chat_failed": "The server answered the chat probe with an error ({status}): it is not a chat model.",
+    # models the watch gave up on
+    "watch_gave_up": "The watch could not measure this model ({error}) and will not try again by itself until its file or server changes; run it yourself to try again.",
     # notes of the tools
     "case_no_checker": "This case has no checker: its answers are recorded (and usable in the arena) but it does not count towards any score.",
     "case_judge_pending": "This case is graded by the judge model (setting judge.contestant); until one is chosen its results stay pending.",

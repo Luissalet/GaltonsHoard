@@ -19,6 +19,8 @@ function StateChips({ m }) {
       {m.kind === "server" && m.up === false && !m.not_served && <Chip className="chip-danger">{t("down")}</Chip>}
       {m.busy && <Chip className="chip-amber">{t("busy")}</Chip>}
       {m.remote && <Chip className="chip-amber">{t("remote")}</Chip>}
+      {m.network === "lan" && <Chip title={t("network_lan_title")}>{t("network_lan")}</Chip>}
+      {m.watch_gave_up && <Chip className="chip-amber" title={t.msg(m.watch_gave_up_reason)}>{t("watch_gave_up")}</Chip>}
       {m.demo && <Chip>{t("demo")}</Chip>}
     </span>
   );
@@ -137,6 +139,7 @@ function Detail({ id, onClose, onChanged }) {
           {data.where?.warnings?.map((w, i) => <div key={i} className="banner banner-warn">{t.msg(w)}</div>)}
           {m.not_chat && <div className="banner banner-warn">{t.msg(m.not_chat_reason)}</div>}
           {m.not_served && <div className="banner banner-warn">{t.msg(m.not_served_reason)}</div>}
+          {m.watch_gave_up && <div className="banner banner-warn">{t.msg(m.watch_gave_up_reason)}</div>}
           {data.same_weights?.length > 0 && (
             <div className="help">{t("same_weights_as")}: {data.same_weights.map((s, i) => (
               <span key={s.id}>{i > 0 && ", "}<b>{s.ollama_ref || s.name}</b> ({s.kind === "server" ? s.url : s.source})</span>

@@ -241,12 +241,41 @@ def probe_openai(client: httpx.Client, url: str) -> dict[str, Any]:
     return out
 
 
+#: Prometheus gauges of the servers that have no ``/slots``: requests being served and requests waiting (vLLM; llama-server's own gauge too)
+BUSY_GAUGES = ("vllm:num_requests_running", "vllm:num_requests_waiting", "llamacpp:requests_processing", "llamacpp:requests_deferred")
+
+
+def metrics_busy(text: str) -> Optional[bool]:
+    """Is any of the request gauges of a Prometheus ``/metrics`` page above zero? ``None`` when the page has none of them."""
+    seen = False
+    for line in text.splitlines():
+        name, _, value = line.strip().rpartition(" ")
+        if name.startswith("#") or name.split("{")[0] not in BUSY_GAUGES:
+            continue
+        try:
+            number = float(value)
+        except ValueError:
+            continue
+        seen = True
+        if number > 0:
+            return True
+    return False if seen else None
+
+
 def slots_busy(client: httpx.Client, url: str) -> Optional[bool]:
-    """Is any slot of a llama-server processing a request right now? ``None`` when the server does not say (no ``/slots``, or it does not answer)."""
+    """Is any slot of a llama-server processing a request right now? A server without ``/slots`` (vLLM, for one) is asked for its request gauges
+    on ``/metrics``. ``None`` when the server does not say (neither page, or it does not answer)."""
+    base = url.rstrip("/")
     try:
-        r = client.get(url.rstrip("/") + "/slots")
+        r = client.get(base + "/slots")
         if r.status_code == 200 and isinstance(r.json(), list):
             return any(bool(s.get("is_processing")) for s in r.json() if isinstance(s, dict))
+    except (httpx.HTTPError, ValueError):
+        pass
+    try:
+        r = client.get(base + "/metrics")
+        if r.status_code == 200:
+            return metrics_busy(r.text)
     except (httpx.HTTPError, ValueError):
         pass
     return None

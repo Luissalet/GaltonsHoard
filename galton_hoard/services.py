@@ -33,7 +33,7 @@ from .servers import Launcher, probe_openai
 from .settings import Settings
 from .store import ACTIVE_RUN_STATES, Store
 from .util import clean_aliases, slugify
-from .watch import SMOKE_SUITE, Watch
+from .watch import SMOKE_SUITE, Watch, failure_of as watch_failure
 
 log = logging.getLogger("galton")
 
@@ -165,8 +165,19 @@ class Services:
                 regressions = self.watch.detect_regressions(run_id)
             except Exception:  # noqa: BLE001
                 log.exception("regression check failed for %s", run_id)
-        elif run["state"] == "failed":
-            self.store.add_notice(kind="run_failed", severity="medium", params={"label": run["label"], "error": run["error"][:400]}, data={"run": run_id}, dedupe=f"run_failed:{run_id}")
+        try:
+            marked = self.watch.record_outcome(run_id)
+        except Exception:  # noqa: BLE001
+            marked = []
+            log.exception("could not record the outcome of %s", run_id)
+        if run["state"] == "failed":
+            # a run of the watch that fails is announced once for the same model, file and reason, not on every cycle
+            dedupe = f"run_failed:{run_id}"
+            if run["source"] == "watch":
+                dedupe = "run_failed:watch:" + ":".join(
+                    f"{rc['contestant_id']}:{rc['digest']}:{getattr(rc['error'], 'key', '') or str(rc['error'])[:40]}" for rc in self.store.run_contestants(run_id))
+            self.store.add_notice(kind="run_failed", severity="medium", params={"label": run["label"], "error": run["error"][:400]}, data={"run": run_id, "given_up": marked},
+                                  dedupe=dedupe)
         self.store.add_activity("run", run_id, run["state"] == "done", int((time.monotonic() - t0) * 1000), run["state"])
         self.routes_changed()
         return {"run": run_id, "state": run["state"], "regressions": len(regressions)}
@@ -223,6 +234,7 @@ class Services:
         card.update(up=meta.get("up"), resident=meta.get("resident"), busy=meta.get("busy"), demo=bool(meta.get("demo")), blob=bool(meta.get("blob")),
                     same_weights=list(meta.get("same_weights") or []), not_chat=(meta.get("chat") or {}).get("ok") is False, not_chat_reason=self.not_chat_reason(meta),
                     not_served=bool(meta.get("not_served")), not_served_reason=self.not_served_reason(c),
+                    network=meta.get("network") or "", watch_gave_up=self.watch_gave_up_reason(c) is not None, watch_gave_up_reason=self.watch_gave_up_reason(c),
                     measured_n=info.get("n", 0), last_measured_ts=info.get("last_ts"),
                     stale=bool(digests) and bool(c["digest"]) and c["digest"] not in digests, never_measured=not info)
         mem, method = memory_gb(self.store, c)
@@ -236,6 +248,12 @@ class Services:
         if chat.get("ok") is not False:
             return None
         return text("not_chat_no_template") if chat.get("reason") == "no_template" else text("not_chat_failed", status=chat.get("status") or "")
+
+    @staticmethod
+    def watch_gave_up_reason(c: dict[str, Any]) -> Optional[CodedText]:
+        """Why the watch does not measure this model by itself any more (it failed once for this file and server); ``None`` for every other entry."""
+        failed = watch_failure(c)
+        return text("watch_gave_up", error=str(failed.get("error") or "?")) if failed else None
 
     @staticmethod
     def not_served_reason(c: dict[str, Any]) -> Optional[CodedText]:
