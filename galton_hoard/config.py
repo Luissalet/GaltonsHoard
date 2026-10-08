@@ -81,6 +81,11 @@ class Config:
         return self.data_dir / "cache"
 
     @property
+    def external_dir(self) -> Path:
+        """Benchmark data downloaded from its source (never part of the repository), one folder per benchmark."""
+        return self.data_dir / "external"
+
+    @property
     def servers_file(self) -> Path:
         """Processes this app started (llama-server children), so a crash does not leave them running."""
         return self.data_dir / "servers.json"

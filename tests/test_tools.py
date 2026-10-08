@@ -554,6 +554,20 @@ def test_assistant_results_are_capped_but_the_ui_is_not(svc):
         assert len(capped["cases"]) < 150
 
 
+def test_benchmark_import_builds_a_suite_from_a_pinned_download(tmp_path, monkeypatch):
+    import ifmt_data
+    from helpers import build_services, mock_client_factory
+    from galton_hoard import ifmtbench
+    files = ifmt_data.files()
+    monkeypatch.setattr(ifmtbench, "PINS", ifmt_data.pins(files))
+    svc = build_services(tmp_path, offline=False, client_factory=mock_client_factory(ifmt_data.server(files)))
+    out = call(svc, "benchmark_import", per_type=2, multi=3, seed=9)
+    assert out["cases"] == 15 and out["suite"]["name"] == "IFMTBench" and "CC BY 4.0" in out["suite"]["description"]
+    assert call(svc, "suite_get", suite=out["suite"]["id"], limit=1)["total_cases"] == 15
+    with pytest.raises(GaltonError):
+        call(svc, "benchmark_import", per_type=2, multi=3, seed=9)
+
+
 def test_unknown_tool_and_bad_arguments(svc):
     from galton_hoard.agent_tools import call_tool
     with pytest.raises(KeyError):

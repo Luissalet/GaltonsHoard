@@ -41,6 +41,7 @@ Run Python from the repository root or with absolute paths.
 | A shared server changed its model, or a contestant says "no se sirve ahora" | `identity.py`, `Runner` guard (`IdentityGuard`, held results), `discovery._check_served`, `tests/test_server_identity.py` |
 | A run must not count (discard, restore) or cancel says the wrong thing | `store.LIVE` / `scoring_rows`, `Services.discard_run`, `Runner.cancel`, `tests/test_tools.py`, `tests/test_cancel.py` |
 | A run waits for (or interrupts) a shared server | `idle.py`, `Runner._wait_for_server` / `yield_to_others`, `tests/test_idle.py` |
+| The IFMTBench suite (download, checksums, sample, scoring) | `ifmtbench.py`, `checkers/ifmt.py`, `docs/IFMTBENCH.md`, `tests/test_ifmt.py` (fixtures in `tests/ifmt_data.py`; the pinned checksums are real, tests patch `ifmtbench.PINS`) |
 | A number in the ranking looks wrong | `stats.py`, `board.py`, `store.scoring_rows` |
 | The routing table | `routes.py`, the setting `routes.policy`, `watch.py` for regressions |
 | A tool or its arguments | `agent_tools.py`, `docs/API.md` (a tool that waits for a run or the judge sets `timeout_s=BRIDGE_WAIT_S`) |

@@ -19,7 +19,7 @@
                       ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
                       ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
                       └──► arena.py: blind pairs from stored answers, votes, ratings
- agent_tools.py: one catalogue (45 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
+ agent_tools.py: one catalogue (46 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
  scheduler.py (hoard_link.lanes): lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
 ```
 
@@ -42,11 +42,12 @@
 | `galton_hoard/backends.py` | Streaming clients for chat-completions servers and Ollama with timings; tool fallback; reasoning-field retry |
 | `galton_hoard/idle.py` | Waiting politely for a shared server: `wait_until_idle`, `LlamaGuard`, `OllamaGuard` |
 | `galton_hoard/runner.py` | Runs: sessions, progress, cancel, skip reasons, judge hand-over, per-run settings. Sessions on a shared server are guarded: answers are held in memory and stored only after a look made after them still finds the same model; otherwise they are dropped (`warn_results_dropped`) and the contestant stops with `server_changed` |
-| `galton_hoard/checkers/` | The checkers; `all` and `any` combine others; judge and family checks are services of the context. `mathcheck` normalises LaTeX (`latex_to_text`, `clean_expression`) before sympy and compares the part after the last `=` of the answer line; `numberwords` evaluates Spanish and English number words and ordinals for `number` when the answer line has no digits; `textutil.answer_part` implements the option `scope: "answer"` of `contains`, `regex` and `constraints`; `jsoncheck` compares expected fields with per-field rules such as `strict`, `contains` and `norm` (equal once a leading generic word like sala or calle is stripped, `strip_generic`) |
+| `galton_hoard/checkers/` | The checkers; `all` and `any` combine others; judge and family checks are services of the context. `ifmt` scores instruction-following translation: ported rule checks (glossary, layout, structured data, code and tags), the benchmark's own judge prompts (`ctx.judge` gets `messages` and a `parse` name, and `judging.make_ask` sends and reads them as given), `product(gates) x mean(graded)`, and `detail.dimensions` per constraint, which `Store.constraint_rows` and `stats.constraint_breakdown` turn into the `constraints` of each leaderboard row; an item that needed the judge and could not be judged is `unavailable`. `mathcheck` normalises LaTeX (`latex_to_text`, `clean_expression`) before sympy and compares the part after the last `=` of the answer line; `numberwords` evaluates Spanish and English number words and ordinals for `number` when the answer line has no digits; `textutil.answer_part` implements the option `scope: "answer"` of `contains`, `regex` and `constraints`; `jsoncheck` compares expected fields with per-field rules such as `strict`, `contains` and `norm` (equal once a leading generic word like sala or calle is stripped, `strip_generic`) |
 | `galton_hoard/generators/` | Long-context haystacks and vision images (Pillow), seeded |
 | `galton_hoard/suites/` | Built-in suites as JSON, validated and synced into the database |
 | `galton_hoard/judging.py` | Judge calls, cache by hash, self-judged marking, pending hand-over |
 | `galton_hoard/importer.py` | JSONL and CSV import and the one-line checker shorthand |
+| `galton_hoard/ifmtbench.py` | The IFMTBench suite: pinned commit and SHA-256 of the two data files, download into `data/external/ifmtbench/` (verified before it is written, an altered copy is deleted), reading rows, the seeded stratified sample, one case per item with an `ifmt` checker, and the import behind the tool `benchmark_import`. See [IFMTBENCH.md](IFMTBENCH.md) |
 | `galton_hoard/stats.py` | Intervals, paired tests, speed summaries, arena ratings |
 | `galton_hoard/board.py` | Leaderboard, comparison and recommendation, computed at request time |
 | `galton_hoard/routes.py` | The routing policy and the published `routes.json` |
@@ -105,7 +106,7 @@ Hash routing (`#/`, `#/modelos`, `#/pruebas/<suite>`, `#/ejecutar/<run>`, `#/cla
 
 ## Data
 
-Everything lives in `data/` (or `GALTON_DATA_DIR`): `galton.db`, `images/`, `cache/`, `logs/` (llama-server logs and the rotating `galton-hoard.log`; the shared launcher keeps start-up safe without a console), `servers.json`, `mcp-token`, `url`.
+Everything lives in `data/` (or `GALTON_DATA_DIR`): `galton.db`, `images/`, `cache/`, `external/` (benchmark data fetched on request and verified, never in the repository), `logs/` (llama-server logs and the rotating `galton-hoard.log`; the shared launcher keeps start-up safe without a console), `servers.json`, `mcp-token`, `url`.
 
 ## Shared servers, discarded runs and cancelling
 

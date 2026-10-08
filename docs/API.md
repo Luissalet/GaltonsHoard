@@ -295,6 +295,26 @@ Annotations: none.
 | `format` (auto \| jsonl \| csv) | no |  |
 | `default_checker` (object/string/null) | no | Used for rows without checker and without expected answer. |
 
+## `benchmark_import`
+
+Import IFMTBench (instruction-following translation) as your suite. Importar benchmark de traducción.
+
+Downloads the data from a pinned commit into the data folder, checks its SHA-256 and builds a seeded stratified sample (default 30 per constraint type plus 30 multi-constraint). Glossary rule, layout, structured data and code/tag checks are exact; style, context and a glossary the rule rejects use the judge model (settings judge.contestant) and stay pending without one. Data CC BY 4.0, scoring ported from the benchmark's Apache-2.0 code.
+Sinónimos: traducción, glosario, terminología, formato, benchmark externo, seguir instrucciones al traducir, estilo, etiquetas, código
+
+Annotations: openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `source` (string) | no | ifmtbench: instruction-following translation (glossary, style, context, layout, structured data, code and tags), CC BY 4.0 data. |
+| `name` (string) | no | Name of the new suite (default IFMTBench). It must not exist yet. |
+| `per_type` (integer) | no | Cases taken from each single-constraint type (6 types). 0: none. The whole file holds up to 1,644 per type. |
+| `multi` (integer) | no | Cases taken from the multi-constraint file, spread evenly over its 5 combinations. 0: none. |
+| `seed` (integer) | no | Fixes the sample: the same seed and sizes give the same cases. |
+| `category` (string) | no | One of writing_es, reasoning, math, code, extraction, tool_use, instruction, long_context, rag, vision, translation, summary, custom. 'custom' keeps the suite out of the routing table; 'translation' lets it feed the translation route. |
+| `refresh` (boolean) | no | Download the data again even if the verified copy is on disk. |
+| `keep_unsatisfiable` (boolean) | no | Also sample items whose own reference translation fails their rule checks (about 3 in 10 of the multi-constraint structured-data ones: Markdown that is not a table). Off: they are left out and counted. |
+
 ## `case_try`
 
 Run one case (saved or draft) on one model and show answer + checker detail. Probar un caso.
