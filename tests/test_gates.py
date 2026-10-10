@@ -102,6 +102,41 @@ def test_a_small_sample_draws_no_conclusion():
     assert only_pair(lower)["reading"] == "never_disagree"
 
 
+def test_pairs_that_never_share_an_answer_make_one_finding_not_one_each():
+    """Gates of different cases never meet; listing every such pair buried the real findings."""
+    units = {}
+    for i in range(30):                                  # case 1: gates a and b
+        units[i] = {"a": F if i % 3 == 0 else P, "b": F if i % 2 == 0 else P}
+    for i in range(30, 60):                              # case 2: gates c, d, e
+        units[i] = {"c": F if i % 4 == 0 else P, "d": F if i % 5 == 0 else P, "e": P if i % 3 else F}
+    rep = gates.analyze({"gates": ["a", "b", "c", "d", "e"], "units": units, "answers": 60}, resamples=100)
+    zero = [p for p in rep["pairs"] if p["n"] == 0]
+    assert len(zero) == 6                                # a,b x c,d,e
+    kinds = [f["kind"] for f in rep["findings"]]
+    assert kinds.count("pairs_disjoint") == 1
+    assert "pair_insufficient" not in kinds, "no per-pair line for pairs with nothing in common"
+    f = next(f for f in rep["findings"] if f["kind"] == "pairs_disjoint")
+    assert f["es"].startswith("6 pares") and f["en"].startswith("6 gate pairs")
+    assert sorted(map(tuple, f["pairs"])) == sorted((p["a"], p["b"]) for p in zero)
+    assert f["gates"] == ["a", "b", "c", "d", "e"]
+
+
+def test_the_disjoint_finding_names_a_bounded_list(monkeypatch):
+    monkeypatch.setattr(gates, "DISJOINT_LISTED", 2)
+    units = {i: {"a": P if i % 2 else F} for i in range(10)}
+    units.update({i: {"b": F if i % 2 else P, "c": P, "d": F} for i in range(10, 20)})
+    rep = gates.analyze({"gates": ["a", "b", "c", "d"], "units": units, "answers": 20}, resamples=50)
+    f = next(f for f in rep["findings"] if f["kind"] == "pairs_disjoint")
+    assert len(f["pairs"]) == 3, "every pair stays in the data"
+    assert f["es"].startswith("3 pares") and f["es"].endswith("y 1 más.")
+    assert f["en"].endswith("and 1 more.")
+    assert f["es"].count("·") == 2, "only DISJOINT_LISTED pairs are named"
+    # a pair with some (but too few) shared answers keeps its own line
+    small = report(cells(3, 0, 0, 5))
+    assert "pair_insufficient" in {x["kind"] for x in small["findings"]}
+    assert "pairs_disjoint" not in {x["kind"] for x in small["findings"]}
+
+
 def test_abstentions_leave_a_pair_but_not_the_other_gates():
     rows = [(F, F)] * 20 + [(P, P)] * 40 + [(F, X)] * 10 + [(X, P)] * 30    # b abstains 10 times, a abstains 30
     names = ("a", "b")

@@ -37,6 +37,7 @@ STRONG_PHI = 0.7
 TIGHT_PHI_LOW = 0.5
 RESAMPLES = 1000
 SEED = 20260
+DISJOINT_LISTED = 8      # pairs named in the single "never share an answer" finding; the rest are counted
 MAX_GATES = 40
 KEYS = ("phi", "lift", "kappa", "p_a_given_b", "p_b_given_a")
 
@@ -302,8 +303,22 @@ def build_findings(single: dict[str, dict[str, Any]], pairs: list[dict[str, Any]
         if s["abstain_rate"] and s["abstain_rate"] >= 0.25 and s["n"] + s["abstained"] >= min_samples:
             add("often_abstains", "info", [g], f"«{g}» se quedó sin veredicto en {_pct(s['abstain_rate'])} de las respuestas (juez o servicio no disponible); sus cifras usan el resto.",
                 f"'{g}' gave no verdict on {_pct(s['abstain_rate'])} of answers (judge or service unavailable); its numbers use the rest.")
+    # Pairs that never share an answer live in different cases: there is nothing
+    # to compare, and one line each buried the real conclusions (67 of 97 on real data).
+    disjoint = [p for p in pairs if p["reading"] == "insufficient" and not p["n"]]
+    if disjoint:
+        names = [f"{p['a']}·{p['b']}" for p in disjoint]
+        shown = ", ".join(names[:DISJOINT_LISTED])
+        more_es = f" y {len(names) - DISJOINT_LISTED} más" if len(names) > DISJOINT_LISTED else ""
+        more_en = f" and {len(names) - DISJOINT_LISTED} more" if len(names) > DISJOINT_LISTED else ""
+        add("pairs_disjoint", "info", sorted({g for p in disjoint for g in (p["a"], p["b"])}),
+            f"{len(names)} pares de comprobaciones nunca se evalúan sobre la misma respuesta (están en casos distintos), así que no se comparan: {shown}{more_es}.",
+            f"{len(names)} gate pairs are never evaluated on the same answer (they belong to different cases), so they are not compared: {shown}{more_en}.",
+            pairs=[[p["a"], p["b"]] for p in disjoint])
     for p in pairs:
         a, b, r = p["a"], p["b"], p["reading"]
+        if r == "insufficient" and not p["n"]:
+            continue
         if r == "insufficient":
             add("pair_insufficient", "info", [a, b], f"«{a}» y «{b}» solo coinciden en {p['n']} respuestas (mínimo {min_samples}): no hay base para medir si fallan juntas.",
                 f"'{a}' and '{b}' share only {p['n']} answers (minimum {min_samples}): not enough to say whether they fail together.")
