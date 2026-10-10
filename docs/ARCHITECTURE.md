@@ -15,11 +15,11 @@
                       │ answer ──► checkers/ (thread pool) ──► result row (score, detail, timings, digest)     ▼ stop, kill the tree, release the leases
                       ▼
  store.scoring_rows ──► stats.py (Wilson, bootstrap, McNemar, paired bootstrap, Bradley-Terry)
-                      ├──► board.py: leaderboard · compare · recommend
+                      ├──► board.py: leaderboard · compare · gates_correlation · recommend
                       ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
                       ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
                       └──► arena.py: blind pairs from stored answers, votes, ratings
- agent_tools.py: one catalogue (46 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
+ agent_tools.py: one catalogue (47 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
  scheduler.py (hoard_link.lanes): lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
 ```
 
@@ -49,7 +49,8 @@
 | `galton_hoard/importer.py` | JSONL and CSV import and the one-line checker shorthand |
 | `galton_hoard/ifmtbench.py` | The IFMTBench suite: pinned commit and SHA-256 of the two data files, download into `data/external/ifmtbench/` (verified before it is written, an altered copy is deleted), reading rows, the seeded stratified sample, one case per item with an `ifmt` checker, and the import behind the tool `benchmark_import`. See [IFMTBENCH.md](IFMTBENCH.md) |
 | `galton_hoard/stats.py` | Intervals, paired tests, speed summaries, arena ratings |
-| `galton_hoard/board.py` | Leaderboard, comparison and recommendation, computed at request time |
+| `galton_hoard/board.py` | Leaderboard, comparison, gate correlation and recommendation, computed at request time |
+| `galton_hoard/gates.py` | Gate correlation: the pass / fail / abstain matrix of the checks inside each case, and per pair phi, lift, kappa and P(A fails given B fails) with seeded bootstrap intervals, a minimum-sample guard and a recommendation of which redundant gate to drop. Reads `store.gate_rows` (stored checker details; discarded runs left out) |
 | `galton_hoard/routes.py` | The routing policy and the published `routes.json` |
 | `galton_hoard/watch.py`, `scheduler.py` | Regression watch (quiet hours from `notify_channels.in_quiet_hours`) and the two background lanes: `scheduler.py` maps Galton's job kinds onto the shared `LaneScheduler` |
 | `galton_hoard/arena.py` | Blind pairs, votes, ratings |

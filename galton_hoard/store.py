@@ -469,6 +469,26 @@ class Store:
         sql += " ORDER BY id"
         return [dict(r) for r in self.db.query(sql, params)]
 
+    def gate_rows(self, *, run_ids: Optional[Iterable[str]] = None, suite_ids: Optional[Iterable[str]] = None,
+                  contestant_ids: Optional[Iterable[str]] = None) -> list[dict[str, Any]]:
+        """Result rows with their stored checker ``detail``, for the gate correlation. Unlike ``scoring_rows`` the ones that waited for the judge or whose check
+        was unavailable stay in (their gate is an abstention); skipped rows, errors and discarded runs are left out."""
+        sql = ("SELECT id, run_id, contestant_id, suite_id, case_id, repeat, passed, unavailable, judge_pending, detail, digest FROM results "
+               f"WHERE skipped = 0 AND error = '' AND {LIVE}")
+        params: list[Any] = []
+        for column, values in (("run_id", run_ids), ("suite_id", suite_ids), ("contestant_id", contestant_ids)):
+            if values is not None:
+                values = list(values)
+                if not values:
+                    return []
+                sql += f" AND {column} IN ({', '.join('?' for _ in values)})"
+                params.extend(values)
+        rows = [dict(r) for r in self.db.query(sql + " ORDER BY id", params)]
+        for r in rows:
+            r["detail"] = _loads(r["detail"], {})
+            r["passed"], r["unavailable"], r["judge_pending"] = bool(r["passed"]), bool(r["unavailable"]), bool(r["judge_pending"])
+        return rows
+
     def speed_rows(self, contestant_id: str, *, since_ts: float = 0.0, digest: str = "") -> list[dict[str, Any]]:
         sql = ("SELECT decode_tps, prompt_tps, ttft_ms, latency_ms, completion_tokens, cpu FROM results WHERE contestant_id = ? AND skipped = 0 "
                f"AND unavailable = 0 AND error = '' AND decode_tps IS NOT NULL AND {LIVE}")

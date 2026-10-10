@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import Response
 
 from .. import suites as suite_lib
 from ..errors import GaltonError
 from ..hoard_link.docs.sniff import sniff
 from ..messages import wire
-from .deps import services
+from .deps import services, tool
 
 router = APIRouter()
 SAFE_HEADERS = {"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600", "Cross-Origin-Resource-Policy": "same-origin"}
@@ -19,6 +19,15 @@ SAFE_HEADERS = {"X-Content-Type-Options": "nosniff", "Cache-Control": "private, 
 def events(request: Request, run_id: str, after: int = 0, limit: int = 300):
     """The run card plus the results written after result id ``after``. The page polls this every second or two while the run is live."""
     return wire(services(request).run_events(run_id, after=max(0, after), limit=max(1, min(limit, 1000))))
+
+
+@router.get("/api/gates/correlation")
+def gates_correlation(request: Request, run: list[str] = Query(default_factory=list), category: str = "", suite: str = "", include_stale: bool = False,
+                      min_samples: int = Query(20, ge=2, le=1000), strong_phi: float = Query(0.7, gt=0, le=1), resamples: int = Query(1000, ge=100, le=5000)):
+    """Pairwise failure correlation of the gates (checks inside the cases) over the stored results: the same report as the ``gates_correlation`` tool.
+    ``run`` may be repeated to analyse several runs together."""
+    return wire(tool(request, "gates_correlation", {"runs": run, "category": category, "suite": suite, "include_stale": include_stale, "min_samples": min_samples,
+                                                    "strong_phi": strong_phi, "resamples": resamples}))
 
 
 @router.get("/api/vision/{case_id}/{number}.png")

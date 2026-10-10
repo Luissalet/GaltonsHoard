@@ -158,6 +158,125 @@ function Compare({ suites }) {
   );
 }
 
+// phi -> a background: red when two gates fail together, green when they fail on different answers, dimmed when there is too little data.
+function phiStyle(pair) {
+  if (!pair || pair.phi == null) return { opacity: 0.5 };
+  const strength = Math.round(Math.min(1, Math.abs(pair.phi)) * 70);
+  const base = pair.phi >= 0 ? "var(--hoard-danger, #e5604b)" : "var(--hoard-success, #3fb67f)";
+  return { background: `color-mix(in srgb, ${base} ${strength}%, transparent)`, opacity: pair.reading === "insufficient" ? 0.45 : 1 };
+}
+
+const signed = (v, lang) => (v == null ? "—" : `${v > 0 ? "+" : ""}${num(v, 2, lang)}`);
+const withCi = (v, ci, lang, digits = 2) => (v == null ? "—" : `${num(v, digits, lang)}${ci ? ` [${num(ci[0], digits, lang)}, ${num(ci[1], digits, lang)}]` : ""}`);
+
+function Gates({ suites }) {
+  const { t, lang, version } = useApp();
+  const [scope, setScope] = useState({ category: "", suite: "" });
+  const [stale, setStale] = useState(false);
+  const [minSamples, setMinSamples] = useState(20);
+  const { data, error, loading } = useLoad(() => api.call("gates_correlation", { ...scope, include_stale: stale, min_samples: minSamples }), [scope.category, scope.suite, stale, minSamples, version]);
+  const gates = data?.gates || [];
+  const pairs = data?.pairs || [];
+  const byKey = {};
+  pairs.forEach((p) => { byKey[`${p.a}|${p.b}`] = p; byKey[`${p.b}|${p.a}`] = p; });
+  const drop = new Set((data?.recommendations || []).map((r) => r.gate));
+  return (
+    <div className="space-y-3">
+      <p className="help">{t("gates_help")}</p>
+      <div className="flex flex-wrap items-end gap-2">
+        <ScopePicker value={scope} onChange={setScope} suites={suites} includeStale={stale} onStale={setStale} />
+        <div style={{ width: 150 }}><Field label={t("gates_min")}><input className="field" type="number" min="2" max="1000" value={minSamples} onChange={(e) => setMinSamples(Math.max(2, Math.min(1000, Number(e.target.value) || 20)))} /></Field></div>
+      </div>
+      <ErrorBox error={error} />
+      {loading && !data && <Spinner />}
+      {data && !data.answers && <Empty>{t("gates_empty")}</Empty>}
+      {data && data.answers > 0 && (
+        <>
+          <div className="panel space-y-1">
+            <b>{data.summary?.[lang] || data.summary?.es}</b>
+            <div className="help">{t("gates_summary", { n: data.answers, u: data.units })}</div>
+          </div>
+          {data.findings?.length > 0 && (
+            <Section title={t("gates_findings_title")} count={data.findings.length}>
+              <div className="space-y-1">
+                {data.findings.map((f, i) => (
+                  <div key={i} className={`banner ${f.severity === "warn" ? "banner-warn" : "banner-info"}`}>{f[lang] || f.es}</div>
+                ))}
+              </div>
+            </Section>
+          )}
+          <Section title={t("gates_single_title")} count={gates.length}>
+            <div className="panel scroll-x" style={{ padding: 0 }}>
+              <table className="tbl">
+                <thead><tr><th>{t("gates_col_gate")}</th><th className="r">n</th><th className="r">{t("gates_col_fails")}</th><th className="r">{t("gates_col_abstain")}</th><th /></tr></thead>
+                <tbody>
+                  {gates.map((g) => (
+                    <tr key={g.gate}>
+                      <td><b className="mono">{g.gate}</b></td>
+                      <td className="r num">{g.n}</td>
+                      <td className="r num">{g.n ? pct(g.fail_rate, 0, lang) : "—"}<div className="help">{g.n ? interval(g.fail_rate_ci, lang) : ""}</div></td>
+                      <td className="r num">{g.abstained ? `${g.abstained} (${pct(g.abstain_rate, 0, lang)})` : "—"}</td>
+                      <td>{drop.has(g.gate) && <Chip className="chip-amber">{t("gates_drop")}</Chip>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Section>
+          {gates.length > 1 && (
+            <Section title={t("gates_matrix_title")}>
+              <div className="panel scroll-x" style={{ padding: 0 }}>
+                <table className="tbl" aria-label={t("gates_matrix_title")}>
+                  <thead><tr><th />{gates.map((g) => <th key={g.gate} className="r mono">{g.gate}</th>)}</tr></thead>
+                  <tbody>
+                    {gates.map((row) => (
+                      <tr key={row.gate}>
+                        <th className="mono">{row.gate}</th>
+                        {gates.map((col) => {
+                          const p = byKey[`${row.gate}|${col.gate}`];
+                          return row.gate === col.gate
+                            ? <td key={col.gate} className="r help">—</td>
+                            : <td key={col.gate} className="r num" style={phiStyle(p)} title={p ? `${t(`rd_${p.reading}`)} · n=${p.n}` : ""}>{p ? signed(p.phi, lang) : "—"}</td>;
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="help">{t("gates_matrix_note")}</p>
+            </Section>
+          )}
+          {pairs.length > 0 && (
+            <Section title={t("gates_pairs_title")} count={pairs.length}>
+              <div className="panel scroll-x" style={{ padding: 0 }}>
+                <table className="tbl">
+                  <thead><tr><th>{t("gates_col_pair")}</th><th className="r">n</th><th className="r">phi</th><th className="r">lift</th><th className="r">kappa</th><th className="r">P(A|B)</th><th className="r">P(B|A)</th><th className="r">{t("gates_col_joint")}</th><th>{t("gates_col_reading")}</th></tr></thead>
+                  <tbody>
+                    {pairs.map((p) => (
+                      <tr key={`${p.a}|${p.b}`}>
+                        <td className="mono" style={{ overflowWrap: "anywhere" }}>{p.a} · {p.b}</td>
+                        <td className="r num">{p.n}</td>
+                        <td className="r num">{withCi(p.phi, p.phi_ci, lang)}</td>
+                        <td className="r num">{withCi(p.lift, p.lift_ci, lang, 1)}</td>
+                        <td className="r num">{withCi(p.kappa, p.kappa_ci, lang)}</td>
+                        <td className="r num">{p.p_a_given_b == null ? "—" : pct(p.p_a_given_b, 0, lang)}</td>
+                        <td className="r num">{p.p_b_given_a == null ? "—" : pct(p.p_b_given_a, 0, lang)}</td>
+                        <td className="r num">{p.joint_fail_rate == null ? "—" : `${pct(p.joint_fail_rate, 0, lang)} / ${pct(p.expected_joint, 0, lang)}`}</td>
+                        <td><Chip className={p.reading === "redundant" || p.reading === "never_disagree" ? "chip-amber" : p.reading === "complementary" || p.reading === "independent" ? "chip-ok" : ""}>{t(`rd_${p.reading}`)}</Chip></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="help">{t("gates_ci_hint")}</p>
+            </Section>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function Clasificacion() {
   const { t, version } = useApp();
   const [tab, setTab] = useState("board");
@@ -166,8 +285,8 @@ export default function Clasificacion() {
   return (
     <div className="space-y-4">
       <h1>{t("nav_board")}</h1>
-      <Tabs value={tab} onChange={setTab} tabs={[{ id: "board", label: t("leaderboard") }, { id: "compare", label: t("compare") }]} />
-      {tab === "board" ? <Leaderboard suites={suites} /> : <Compare suites={suites} />}
+      <Tabs value={tab} onChange={setTab} tabs={[{ id: "board", label: t("leaderboard") }, { id: "compare", label: t("compare") }, { id: "gates", label: t("gates_tab") }]} />
+      {tab === "board" ? <Leaderboard suites={suites} /> : tab === "compare" ? <Compare suites={suites} /> : <Gates suites={suites} />}
     </div>
   );
 }

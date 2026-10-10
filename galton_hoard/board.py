@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from . import gguf_meta, placement, stats
+from . import gates, gguf_meta, placement, stats
 from .errors import GaltonError
 from .messages import text
 from .routes import TASKS, Routes, names_for, vram_gb
@@ -170,6 +170,29 @@ class Board:
         speeds = {c["id"]: stats.speed_by_device(self.store.speed_rows(c["id"], digest="" if include_stale else c["digest"])) for c in (ca, cb)}
         return {"scope": label, "a": {"id": ca["id"], "name": ca["name"], "summary": stats.summarize(rows[ca["id"]]), "speed": speeds[ca["id"]]},
                 "b": {"id": cb["id"], "name": cb["name"], "summary": stats.summarize(rows[cb["id"]]), "speed": speeds[cb["id"]]}, "sentence": sentence + ".", **result}
+
+    # ------------------------------------------------------------------ gates
+    def gate_correlation(self, *, runs: Optional[list[str]] = None, category: str = "", suite: str = "", include_stale: bool = False,
+                         min_samples: int = gates.MIN_SAMPLES, strong_phi: float = gates.STRONG_PHI, resamples: int = gates.RESAMPLES) -> dict[str, Any]:
+        """Do the gates (the checks inside the cases) fail together? The outcome matrix of the live results of ``runs`` (all runs when empty) over the
+        suites of ``category`` / ``suite``, pairwise phi / lift / kappa / conditional failure with bootstrap intervals, and what is redundant."""
+        run_ids = [self.store.run(ref)["id"] for ref in runs] if runs else None
+        suite_ids, label = suite_ids_for(self.store, category=category, suite=suite)
+        rows = self.store.gate_rows(run_ids=run_ids, suite_ids=suite_ids) if suite_ids else []
+        fresh = {c["id"]: c["digest"] for c in self.store.contestants()}
+        if not include_stale:
+            rows = [r for r in rows if not fresh.get(r["contestant_id"]) or r["digest"] == fresh[r["contestant_id"]]]
+        specs = {k: c["checker"] for k in {r["case_id"] for r in rows} if (c := self.store.find_case(k))}
+        matrix = gates.build_matrix(rows, specs, by_digest=include_stale)
+        report = gates.analyze(matrix, min_samples=min_samples, strong_phi=strong_phi, resamples=resamples)
+        names = {c["id"]: c["name"] for c in self.store.contestants()}
+        report["scope"] = {"label": label, "runs": run_ids or "all", "models": sorted({names.get(r["contestant_id"], r["contestant_id"]) for r in rows}),
+                           "include_stale": include_stale}
+        if not report["answers"]:
+            report["warnings"] = ["No stored answers with an evaluable check in this scope. Run a suite first (run_start)."]
+        else:
+            report["warnings"] = []
+        return report
 
     # ------------------------------------------------------------------ recommending
     def recommend(self, task: str, category: str = "") -> dict[str, Any]:

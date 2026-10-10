@@ -324,6 +324,16 @@ class CompareArgs(BaseModel):
     max_cases: int = Field(40, ge=0, le=300, description="How many of the most different cases to list.")
 
 
+class GatesCorrelationArgs(BaseModel):
+    runs: list[str] = Field(default_factory=list, max_length=50, description="Run ids to analyse together (they should share cases). Empty: every run that still counts.")
+    category: str = Field("", max_length=30, description=f"A task ({', '.join(TASKS)}) or a suite category ({', '.join(CATEGORIES)}). Empty: everything.")
+    suite: str = Field("", max_length=200, description="One suite instead of a category.")
+    include_stale: bool = False
+    min_samples: int = Field(20, ge=2, le=1000, description="Answers a pair of gates must share before any conclusion is drawn about it.")
+    strong_phi: float = Field(0.7, gt=0, le=1, description="phi from which two gates count as carrying the same signal (the interval must also stay above 0.5).")
+    resamples: int = Field(1000, ge=100, le=5000, description="Bootstrap resamples for the intervals.")
+
+
 class RecommendArgs(BaseModel):
     task: str = Field(..., min_length=3, max_length=500, description="What the model will be used for, in plain words (any language).")
     category: str = Field("", max_length=30, description=f"Force a task category: {', '.join(TASKS)}.")
@@ -740,6 +750,11 @@ def run_compare(svc: Services, a: CompareArgs) -> dict[str, Any]:
     return cap_result(svc.board.compare(a.a, a.b, category=a.category, suite=a.suite, include_stale=a.include_stale, max_cases=a.max_cases))
 
 
+def run_gates_correlation(svc: Services, a: GatesCorrelationArgs) -> dict[str, Any]:
+    return cap_result(svc.board.gate_correlation(runs=a.runs or None, category=a.category, suite=a.suite, include_stale=a.include_stale, min_samples=a.min_samples,
+                                                 strong_phi=a.strong_phi, resamples=a.resamples))
+
+
 def run_recommend(svc: Services, a: RecommendArgs) -> dict[str, Any]:
     return cap_result(svc.board.recommend(a.task, a.category))
 
@@ -908,6 +923,10 @@ TOOLS: list[Tool] = [
     Tool("compare", _d("Paired comparison of two models: wins/losses, McNemar, bootstrap, verdict. Comparar dos modelos.",
                        "Verdict better / worse / no clear difference with p-value and n; a warning under 20 shared cases.", "es mejor, mejora la nueva cuantización, diferencia significativa, A contra B"),
          CompareArgs, ann(True), run_compare),
+    Tool("gates_correlation", _d("Do the checks of a case fail together? phi, lift, kappa, redundant gates. Correlación entre comprobaciones.",
+                                 "Per pair of gates: phi, lift, kappa, P(A fails|B fails) with bootstrap 95 % intervals and a minimum-sample guard; findings in Spanish and English and which gate to drop.",
+                                 "comprobaciones redundantes, fallos correlacionados, puertas, verificadores, juez redundante, kappa, phi"),
+         GatesCorrelationArgs, ann(True), run_gates_correlation),
     Tool("recommend", _d("Best measured model for a task described in words, with why and runner-up. Qué modelo usar.",
                          "Guesses the category from keywords (es/en) or takes category; says so when there is not enough evidence.", "recomienda un modelo, cuál uso para, el mejor para traducir"),
          RecommendArgs, ann(True), run_recommend),

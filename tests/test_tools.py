@@ -576,6 +576,19 @@ def test_unknown_tool_and_bad_arguments(svc):
         call_tool(svc, "run_start", {"suites": [], "contestants": ["x"]})
 
 
+def test_gates_correlation_on_the_builtin_suites_reads_stored_results(svc, measured):
+    out = call(svc, "gates_correlation", min_samples=5, resamples=100)
+    assert out["answers"] > 0 and out["summary"]["es"] and {"gates", "pairs", "findings", "recommendations", "thresholds"} <= set(out)
+    assert all(g["n"] >= 1 for g in out["gates"])
+    one = call(svc, "gates_correlation", suite="razonamiento", resamples=100)
+    assert one["scope"]["label"] and one["answers"] <= out["answers"]
+
+
+def test_gates_correlation_without_results_says_so(svc):
+    out = call(svc, "gates_correlation")
+    assert out["answers"] == 0 and out["gates"] == [] and out["warnings"] and "No hay respuestas" in out["summary"]["es"]
+
+
 def test_every_tool_was_called():
     missing = sorted(set(TOOLS_BY_NAME) - CALLED)
     assert not missing, f"tools never called in this module: {missing}"

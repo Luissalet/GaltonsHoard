@@ -540,6 +540,25 @@ Annotations: readOnlyHint, idempotentHint.
 | `include_stale` (boolean) | no |  |
 | `max_cases` (integer) | no | How many of the most different cases to list. |
 
+## `gates_correlation`
+
+Do the checks of a case fail together? phi, lift, kappa, redundant gates. Correlación entre comprobaciones.
+
+Per pair of gates: phi, lift, kappa, P(A fails|B fails) with bootstrap 95 % intervals and a minimum-sample guard; findings in Spanish and English and which gate to drop.
+Sinónimos: comprobaciones redundantes, fallos correlacionados, puertas, verificadores, juez redundante, kappa, phi
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `runs` (array) | no | Run ids to analyse together (they should share cases). Empty: every run that still counts. |
+| `category` (string) | no | A task (general, writing_es, code, extraction, tool_use, long_context, rag, vision, summary, translation, math) or a suite category (writing_es, reasoning, math, code, extraction, tool_use, instruction, long_context, rag, vision, translation, summary, custom). Empty: everything. |
+| `suite` (string) | no | One suite instead of a category. |
+| `include_stale` (boolean) | no |  |
+| `min_samples` (integer) | no | Answers a pair of gates must share before any conclusion is drawn about it. |
+| `strong_phi` (number) | no | phi from which two gates count as carrying the same signal (the interval must also stay above 0.5). |
+| `resamples` (integer) | no | Bootstrap resamples for the intervals. |
+
 ## `recommend`
 
 Best measured model for a task described in words, with why and runner-up. Qué modelo usar.
