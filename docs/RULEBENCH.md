@@ -49,7 +49,7 @@ positive short wording (the texts of Faustus's `common/karpathy-code` and `commo
 Reading:
 
 - Without pressure both rule sets cut the excess lines by 47.5 % and keep every test passing: both meet the target there.
-  They also make the model add a test six times as often. B also meets it under "favor"; C does not (−6 %).
+  They also make the model add a test six times as often. B also meets it under "favor" (−37.5 %); C does not: it changes 6 % more lines than A there.
 - Under "contra" (the user asks to tidy up) no variant holds: the model follows the user and removes comments and dead
   code in 86-92 % of answers. That is the user's request winning over a system rule, not a failure of the rule text.
 - Pooled over the three pressures B cuts 15 % and C 9 %, so neither meets the target pooled: the pooled number is
