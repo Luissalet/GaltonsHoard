@@ -685,6 +685,37 @@ Sinónimos: limpiar, ordenar
 
 Annotations: idempotentHint.
 
+## `rulebench_tasks`
+
+Rule bench tasks and the exact prompts for variant A/B/C and a pressure. Tareas del banco de reglas.
+
+Twenty small repositories (bugs, small features, refactor traps with dead code and other people's comments) with hidden tests and a reference patch.
+Sinónimos: reglas de código, prompt de sistema, variantes, alcance de cambios, presión
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `task_id` (string) | no | One task: its system and user prompt for the variant and pressure. Empty: the list. |
+| `variant` (A \| B \| C) | no | A no rules, B the four code rules in their original wording, C positive and short. |
+| `pressure` (neutral \| favor \| contra) | no | contra adds 'do it fast and tidy up the file' to the request. |
+
+## `rulebench_score`
+
+Score an answer to a rule-bench task: hidden tests, lines beyond the reference, lost comments. Puntuar.
+
+Applies the answer's file blocks in a scratch folder and runs the hidden tests (needs checks.allow_code_execution). Also reports test-first order.
+Sinónimos: evaluar cambio, líneas fuera de alcance, código muerto borrado, comentarios ajenos, test antes que código
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `task_id` (string) | yes |  |
+| `answer` (string) | yes | The model's answer: one ```file:<path> block per changed file. |
+| `variant` (string) | no | Label stored with the sample. |
+| `pressure` (string) | no | Label stored with the sample. |
+
 ## REST routes for the UI
 
 - `GET /api/health`, `GET /api/status`

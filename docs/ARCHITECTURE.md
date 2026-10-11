@@ -19,7 +19,7 @@
                       ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
                       ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
                       └──► arena.py: blind pairs from stored answers, votes, ratings
- agent_tools.py: one catalogue (47 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
+ agent_tools.py: one catalogue (49 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
  scheduler.py (hoard_link.lanes): lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
 ```
 
@@ -115,6 +115,10 @@ Everything lives in `data/` (or `GALTON_DATA_DIR`): `galton.db`, `images/`, `cac
 - **Discarded runs.** `run_discard` (needs `confirm=true` and a reason) sets a flag on a finished run; `run_restore` clears it. Every statistic reads results through the SQL fragment `LIVE` (`store.scoring_rows`), so the leaderboard, compare, recommend, routes, arena and regression checks never see a discarded run. Discarding retracts the regression and improvement notices of that run; restoring re-checks regressions.
 - **Continuing a run.** `run_resume` (`Runner.resume`) queues a new run for a run that is `failed` or `cancelled` and not discarded: same suites, models and settings, `runs.continues` set to the earlier run, label plus a suffix (`label_continued`). `Runner.plan_cases` leaves out every (suite, case, repeat) that the runs `continues` leads back to (followed transitively; a loop ends the walk; discarded runs do not count) already hold for that model on its current digest, without an error and not skipped or unavailable (`store.measured_keys`); the contestant gets the note `note_resumed`. A model with nothing left is not loaded, and a continuation with nothing left for any model is refused (`run_nothing_left`). `execute` also grades the answers of the continued runs that still wait for the judge. The earlier results keep counting in every statistic (the new run only adds).
 - **Cancel.** The note of `run_cancel` depends on the contestants not yet finished: Galton's own llama-server (a GGUF file, ports 8091-8099) is stopped; a shared server is not touched and keeps running (`run_stopping_own`, `run_stopping_shared`, `run_stopping_both`). Nothing in cancel unloads, stops or kills a shared server (`tests/test_cancel.py`).
+
+## Rule bench
+
+`galton_hoard/rulebench/` is independent of the runner and the database. `tasks.py` holds the tasks (files, request, hidden tests, reference patch as `[path, old, new]` replacements, protected snippets); `variants.py` the system prompts A/B/C, the pressure sentences and `load_variant_file` for any other rule file; `scoring.py` parses the ```` ```file:path ```` blocks, applies them over a scratch copy, writes the hidden tests over whatever the answer brought and runs pytest with this Python (`PYTHONPATH` at the copy, no cache), then measures lines with difflib (a replaced line counts once) and computes pass@k and pass^k with the unbiased estimators; `runner.py` runs the grid (optionally in threads, same order as a sequential run) and summarises it. The two tools share `score_answer`; `rulebench_score` refuses when `checks.allow_code_execution` is off.
 
 ## Simulated users
 

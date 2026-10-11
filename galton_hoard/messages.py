@@ -154,6 +154,8 @@ ERRORS: dict[str, tuple[str, str]] = {
     "arena_no_pair": ("No arena pair {pair}.", "Ask for a pair with arena_next."),
     "arena_already_voted": ("That pair already has a vote.", "Ask for a new pair with arena_next."),
     "unknown_category": ("Unknown category '{category}'.", "Use one of: {options}."),
+    "rulebench_no_task": ("No rule-bench task '{task}'.", "Known: {options}."),
+    "rulebench_code_off": ("Scoring runs the answer's code and code execution is switched off (checks.allow_code_execution).", "Turn it on in the settings if the user asks for it."),
     "unknown_task_category": ("Unknown task category '{category}'.", "Use one of: {options}."),
     "nothing_to_publish": ("There is nothing to publish: no task category has enough checked cases.",
                            "Run suites on your models first (see recommend or run_start); a category needs at least routes.min_cases checked cases."),

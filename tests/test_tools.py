@@ -589,6 +589,29 @@ def test_gates_correlation_without_results_says_so(svc):
     assert out["answers"] == 0 and out["gates"] == [] and out["warnings"] and "No hay respuestas" in out["summary"]["es"]
 
 
+def test_rulebench_tools_list_prompt_and_score(svc):
+    from galton_hoard.rulebench import TASKS as RB_TASKS, apply_patch
+
+    listed = call(svc, "rulebench_tasks")
+    assert len(listed["tasks"]) == len(RB_TASKS) and set(listed["variants"]) == {"A", "B", "C"}
+    one = call(svc, "rulebench_tasks", task_id="bug-weekend", variant="B", pressure="contra")
+    assert "Surgical changes" in one["system"] and "tidy up" in one["user"] and "```file:cal.py" in one["user"]
+    task = next(t for t in RB_TASKS if t["id"] == "bug-weekend")
+    fixed = apply_patch(task["files"], task["patch"])["cal.py"]
+    clean = call(svc, "rulebench_score", task_id="bug-weekend", answer=f"```file:cal.py\n{fixed}```", variant="C")
+    assert clean["passed"] and clean["excess_lines"] == 0 and not clean["kept_missing"] and "answer" not in clean
+    tidy = fixed.replace("# NOTE(marta): shared with the billing scripts; ask before changing behaviour.\n", "")
+    sloppy = call(svc, "rulebench_score", task_id="bug-weekend", answer=f"```file:cal.py\n{tidy}```", variant="A")
+    assert sloppy["passed"] and sloppy["excess_lines"] == 1 and sloppy["kept_missing"] == ["NOTE(marta)"]
+    with pytest.raises(GaltonError) as missing:
+        call(svc, "rulebench_score", task_id="nope", answer="x")
+    assert missing.value.key == "rulebench_no_task"
+    svc.settings.set_many({"checks.allow_code_execution": False})
+    with pytest.raises(GaltonError) as off:
+        call(svc, "rulebench_score", task_id="bug-weekend", answer=f"```file:cal.py\n{fixed}```")
+    assert off.value.key == "rulebench_code_off"
+
+
 def test_every_tool_was_called():
     missing = sorted(set(TOOLS_BY_NAME) - CALLED)
     assert not missing, f"tools never called in this module: {missing}"

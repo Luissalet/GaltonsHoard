@@ -826,6 +826,49 @@ def run_housekeeping(svc: Services, _: Empty) -> dict[str, Any]:
     return out if isinstance(out, dict) else {"result": out}
 
 
+# ================================================================================ rule bench
+class RulebenchTasksArgs(BaseModel):
+    task_id: str = Field("", max_length=80, description="One task: its system and user prompt for the variant and pressure. Empty: the list.")
+    variant: Literal["A", "B", "C"] = Field("C", description="A no rules, B the four code rules in their original wording, C positive and short.")
+    pressure: Literal["neutral", "favor", "contra"] = Field("neutral", description="contra adds 'do it fast and tidy up the file' to the request.")
+
+
+class RulebenchScoreArgs(BaseModel):
+    task_id: str = Field(..., max_length=80)
+    answer: str = Field(..., max_length=200_000, description="The model's answer: one ```file:<path> block per changed file.")
+    variant: str = Field("", max_length=40, description="Label stored with the sample.")
+    pressure: str = Field("", max_length=40, description="Label stored with the sample.")
+
+
+def _rulebench_task(task_id: str) -> dict[str, Any]:
+    from .rulebench import TASKS as RB_TASKS
+    task = next((t for t in RB_TASKS if t["id"] == task_id), None)
+    if task is None:
+        raise GaltonError("not_found", "rulebench_no_task", task=task_id, options=", ".join(t["id"] for t in RB_TASKS))
+    return task
+
+
+def run_rulebench_tasks(_svc: Services, a: RulebenchTasksArgs) -> dict[str, Any]:
+    from .rulebench import PRESSURES, TASKS as RB_TASKS, VARIANTS, system_prompt, user_prompt
+    if not a.task_id:
+        return {"tasks": [{"id": t["id"], "kind": t["kind"], "request": t["request"], "files": sorted(t["files"])} for t in RB_TASKS],
+                "variants": {k: label for k, (label, _) in VARIANTS.items()}, "pressures": PRESSURES,
+                "how": "Send system and user of a task to the model, then pass its answer to rulebench_score. The full A/B/C x k run is scripts/rulebench_eval.py."}
+    task = _rulebench_task(a.task_id)
+    return {"id": task["id"], "kind": task["kind"], "variant": a.variant, "pressure": a.pressure,
+            "system": system_prompt(a.variant), "user": user_prompt(task["request"], task["files"], a.pressure)}
+
+
+def run_rulebench_score(svc: Services, a: RulebenchScoreArgs) -> dict[str, Any]:
+    from .rulebench import score_answer
+    task = _rulebench_task(a.task_id)
+    if not svc.settings.get("checks.allow_code_execution"):
+        raise GaltonError("unavailable", "rulebench_code_off")
+    sample = score_answer(task, a.answer, variant=a.variant, pressure=a.pressure, keep_answer=False).as_dict()
+    sample.pop("answer", None)
+    return cap_result(sample)
+
+
 # ================================================================================ catalogue
 TOOLS: list[Tool] = [
     Tool("galton_overview", _d("Models, routing table, running run, notices, GPUs and next steps. Estado general del banco de pruebas.",
@@ -951,6 +994,13 @@ TOOLS: list[Tool] = [
          NoticesArgs, ann(False, idempotent=True), run_notices),
     Tool("housekeeping_run", _d("Tidy caches, unused images and old unvoted arena pairs; stop leftover servers. Mantenimiento.", synonyms="limpiar, ordenar"),
          Empty, ann(False, idempotent=True), run_housekeeping),
+    Tool("rulebench_tasks", _d("Rule bench tasks and the exact prompts for variant A/B/C and a pressure. Tareas del banco de reglas.",
+                               "Twenty small repositories (bugs, small features, refactor traps with dead code and other people's comments) with hidden tests and a reference patch.",
+                               "reglas de código, prompt de sistema, variantes, alcance de cambios, presión"), RulebenchTasksArgs, ann(True), run_rulebench_tasks),
+    Tool("rulebench_score", _d("Score an answer to a rule-bench task: hidden tests, lines beyond the reference, lost comments. Puntuar.",
+                               "Applies the answer's file blocks in a scratch folder and runs the hidden tests (needs checks.allow_code_execution). Also reports test-first order.",
+                               "evaluar cambio, líneas fuera de alcance, código muerto borrado, comentarios ajenos, test antes que código"),
+         RulebenchScoreArgs, ann(False, idempotent=True), run_rulebench_score),
 ]
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 assert len(TOOLS_BY_NAME) == len(TOOLS)
