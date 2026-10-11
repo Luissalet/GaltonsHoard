@@ -161,6 +161,10 @@ def test_run_bench_and_verdict_with_a_fake_model():
     assert a["pass@3"] == 1.0 and a["pass^3"] == 0.0 and a["mean_excess_lines"] > 0
     assert report["verdict"]["C"] == {"excess_cut_vs_A": 1.0, "pass_at_k_held": True, "meets_target": True}
     assert set(report["by_variant_pressure"]) == {"A/contra", "A/neutral", "C/contra", "C/neutral"}
+    assert report["verdict_by_pressure"]["contra"]["C"]["meets_target"] and set(report["verdict_by_pressure"]) == {"neutral", "contra"}
+    from galton_hoard.rulebench import samples_from_report
+    again = summarise(samples_from_report({"samples": [s.as_dict() for s in samples]}), k=3)
+    assert again["by_variant"] == report["by_variant"]
     with pytest.raises(ValueError):
         run_bench(tasks, fake, variants=("Z",), k=1)
 

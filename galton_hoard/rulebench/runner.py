@@ -128,15 +128,34 @@ def summarise(samples: list[Sample], k: int) -> dict[str, Any]:
             rows = [s for s in samples if s.variant == v and s.kind == kind]
             if rows:
                 out["by_kind"][f"{v}/{kind}"] = _block(rows, k)
-    base = out["by_variant"].get("A")
-    if base:
-        for v, row in out["by_variant"].items():
-            if v == "A":
-                continue
-            b_excess, v_excess = base["mean_excess_lines"] or 0.0, row["mean_excess_lines"] or 0.0
-            cut = (b_excess - v_excess) / b_excess if b_excess else (0.0 if v_excess == 0 else -1.0)
-            key = f"pass@{k}"
-            holds = (row[key] or 0.0) >= (base[key] or 0.0)
-            out["verdict"][v] = {"excess_cut_vs_A": round(cut, 4), "pass_at_k_held": holds,
-                                 "meets_target": bool(holds and cut >= TARGET_EXCESS_CUT)}
+    out["verdict"] = _verdict(out["by_variant"], k)
+    # per pressure as well: under "contra" the user asks for the tidy-up, so pooling it hides what the rules do unprompted
+    out["verdict_by_pressure"] = {}
+    for p in pressures:
+        rows = {v: out["by_variant_pressure"][f"{v}/{p}"] for v in variants if f"{v}/{p}" in out["by_variant_pressure"]}
+        verdict = _verdict(rows, k)
+        if verdict:
+            out["verdict_by_pressure"][p] = verdict
     return out
+
+
+def _verdict(rows: dict[str, dict], k: int) -> dict[str, Any]:
+    base = rows.get("A")
+    if not base:
+        return {}
+    out = {}
+    for v, row in rows.items():
+        if v == "A":
+            continue
+        b_excess, v_excess = base["mean_excess_lines"] or 0.0, row["mean_excess_lines"] or 0.0
+        cut = (b_excess - v_excess) / b_excess if b_excess else (0.0 if v_excess == 0 else -1.0)
+        key = f"pass@{k}"
+        holds = (row[key] or 0.0) >= (base[key] or 0.0)
+        out[v] = {"excess_cut_vs_A": round(cut, 4), "pass_at_k_held": holds, "meets_target": bool(holds and cut >= TARGET_EXCESS_CUT)}
+    return out
+
+
+def samples_from_report(report: dict[str, Any]) -> list[Sample]:
+    """The samples of a saved JSON report, to summarise it again without calling any model."""
+    fields = set(Sample.__dataclass_fields__)
+    return [Sample(**{key: val for key, val in row.items() if key in fields}) for row in report.get("samples", [])]

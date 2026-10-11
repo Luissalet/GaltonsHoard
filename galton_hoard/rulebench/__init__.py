@@ -7,13 +7,13 @@ files outside the reference, protected snippets removed, and whether a test came
 pass@k, pass^k and a verdict per variant against the no-rules baseline.
 """
 
-from .runner import TARGET_EXCESS_CUT, ChatGenerator, run_bench, select_tasks, summarise
+from .runner import TARGET_EXCESS_CUT, ChatGenerator, run_bench, samples_from_report, select_tasks, summarise
 from .scoring import Sample, changed_lines, parse_answer, pass_at_k, pass_hat_k, run_tests, score_answer
 from .tasks import TASKS, apply_patch
 from .variants import PRESSURES, VARIANTS, load_variant_file, system_prompt, user_prompt
 
 __all__ = [
     "PRESSURES", "TARGET_EXCESS_CUT", "TASKS", "VARIANTS", "ChatGenerator", "Sample", "apply_patch", "changed_lines",
-    "load_variant_file", "parse_answer", "pass_at_k", "pass_hat_k", "run_bench", "run_tests", "score_answer", "select_tasks",
+    "load_variant_file", "parse_answer", "pass_at_k", "pass_hat_k", "run_bench", "run_tests", "samples_from_report", "score_answer", "select_tasks",
     "summarise", "system_prompt", "user_prompt",
 ]

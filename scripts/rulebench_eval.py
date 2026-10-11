@@ -5,6 +5,7 @@
     python scripts/rulebench_eval.py --url ... --model ... --pressures neutral,favor,contra --variants A,C --tasks bug-discount,ref-vat-constant
     python scripts/rulebench_eval.py --url ... --model ... --rules D=path/to/rule.md --variants A,D
     python scripts/rulebench_eval.py --dry-run --k 5
+    python scripts/rulebench_eval.py --resummarize report.json   (recompute the summary of a saved report, no model calls)
 
 Each call sends the system prompt of the variant and the request with the repository files; the answer is applied in a scratch
 folder and the hidden tests run there with this Python's pytest. The report is JSON on stdout (or --out FILE): summary per variant,
@@ -21,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from galton_hoard.rulebench import (  # noqa: E402
-    PRESSURES, VARIANTS, ChatGenerator, load_variant_file, run_bench, select_tasks, summarise,
+    PRESSURES, VARIANTS, ChatGenerator, load_variant_file, run_bench, samples_from_report, select_tasks, summarise,
 )
 
 
@@ -46,8 +47,21 @@ def main(argv=None) -> int:
     ap.add_argument("--concurrency", type=int, default=1, help="parallel calls (the server's free slots, not more)")
     ap.add_argument("--no-answers", action="store_true", help="leave the raw answers out of the report")
     ap.add_argument("--dry-run", action="store_true", help="print the plan and exit without calling any model")
+    ap.add_argument("--resummarize", default="", help="a saved JSON report: print its summary again, no model calls")
     ap.add_argument("--out", default="")
     args = ap.parse_args(argv)
+
+    if args.resummarize:
+        report = json.loads(Path(args.resummarize).read_text(encoding="utf-8"))
+        k = int((report.get("summary") or {}).get("k") or args.k)
+        report["summary"] = summarise(samples_from_report(report), k)
+        text = json.dumps(report if args.out else report["summary"], ensure_ascii=False, indent=2)
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+        else:
+            sys.stdout.reconfigure(encoding="utf-8")
+            print(text)
+        return 0
 
     overrides = {}
     for item in args.rules:
