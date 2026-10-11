@@ -1,0 +1,105 @@
+{
+  "family": "simulated_users",
+  "version": 1,
+  "cases": [
+    {
+      "id": "vague-savings",
+      "persona": "vague",
+      "ambiguous": true,
+      "opening": "Oye, quiero saber cuanto me sobra al mes, es que no se si llego.",
+      "hidden_goal": "Saber cuanto dinero le sobra al mes: ingresos 2400 EUR, alquiler 900 EUR, otros gastos fijos 700 EUR (resultado 800 EUR).",
+      "facts": ["Cobras 2400 euros al mes.", "Pagas 900 euros de alquiler.", "El resto de gastos fijos suman 700 euros."],
+      "checker": {"type": "contains", "all": ["800"]},
+      "reference": "Te sobran 800 euros al mes.",
+      "max_turns": 6
+    },
+    {
+      "id": "vague-recipe-scale",
+      "persona": "vague",
+      "ambiguous": true,
+      "opening": "Voy a hacer la receta del arroz pero vienen mas personas, cuanto arroz pongo?",
+      "hidden_goal": "Saber cuantos gramos de arroz necesita: la receta es para 4 personas con 300 g y vienen 10 personas (resultado 750 g).",
+      "facts": ["La receta original es para 4 personas.", "La receta original lleva 300 gramos de arroz.", "Ahora seran 10 personas."],
+      "checker": {"type": "contains", "all": ["750"]},
+      "reference": "Necesitas 750 g de arroz.",
+      "max_turns": 6
+    },
+    {
+      "id": "vague-tip",
+      "persona": "vague",
+      "ambiguous": true,
+      "opening": "Cuanto tengo que dejar de propina? Es que me da cosa quedar mal.",
+      "hidden_goal": "Saber el importe de la propina: la cuenta fue de 64 EUR y quiere dejar el 15 % (resultado 9,60 EUR).",
+      "facts": ["La cuenta fue de 64 euros.", "Quieres dejar un 15 por ciento."],
+      "checker": {"type": "regex", "pattern": "9[.,]60?(?!\\d)"},
+      "reference": "La propina es de 9,60 euros.",
+      "max_turns": 6
+    },
+    {
+      "id": "hurry-speed",
+      "persona": "hurry",
+      "ambiguous": false,
+      "opening": "72 km/h a m/s. Solo el numero, voy con prisa.",
+      "hidden_goal": "Obtener 72 km/h en m/s (resultado 20).",
+      "facts": [],
+      "checker": {"type": "regex", "pattern": "(?<![\\d.,])20(?:[.,]0+)?(?!\\d|[.,]\\d)"},
+      "reference": "20",
+      "max_turns": 3
+    },
+    {
+      "id": "hurry-days-between",
+      "persona": "hurry",
+      "ambiguous": false,
+      "opening": "Dias entre el 1 de marzo de 2026 y el 15 de abril de 2026. Rapido, por favor.",
+      "hidden_goal": "Obtener los dias entre el 1 de marzo y el 15 de abril de 2026 (resultado 45).",
+      "facts": [],
+      "checker": {"type": "regex", "pattern": "(?<![\\d.,])45(?!\\d|[.,]\\d)"},
+      "reference": "45 dias.",
+      "max_turns": 3
+    },
+    {
+      "id": "hurry-tablespoons",
+      "persona": "hurry",
+      "ambiguous": true,
+      "opening": "5 cucharadas a ml, ya.",
+      "hidden_goal": "Convertir 5 cucharadas a ml, usando 15 ml por cucharada (la medida de su receta espanola) (resultado 75 ml).",
+      "facts": ["Tu receta es espanola y cuenta 15 ml por cucharada."],
+      "checker": {"type": "regex", "pattern": "(?<![\\d.,])75(?!\\d|[.,]\\d)"},
+      "reference": "75 ml.",
+      "max_turns": 4
+    },
+    {
+      "id": "selfcorrect-discount",
+      "persona": "selfcorrect",
+      "ambiguous": false,
+      "opening": "Una chaqueta de 80 euros con un 25 % de descuento, cuanto cuesta?",
+      "hidden_goal": "Precio final de una chaqueta de 80 EUR con un 30 % de descuento (resultado 56 EUR). Tras la primera respuesta te corriges: el descuento era del 30 %, no del 25 %.",
+      "facts": ["Despues de la primera respuesta dices que te has equivocado y que el descuento real es del 30 por ciento."],
+      "checker": {"type": "contains", "all": ["56"], "scope": "answer"},
+      "reference": "Con el 30 % de descuento cuesta 56 euros.",
+      "max_turns": 5
+    },
+    {
+      "id": "selfcorrect-end-time",
+      "persona": "selfcorrect",
+      "ambiguous": false,
+      "opening": "Empiezo a las 9:30 y dura 2 horas y 45 minutos, a que hora acabo?",
+      "hidden_goal": "Hora de fin si empieza a las 9:30 y dura 2 h 50 min (resultado 12:20). Tras la primera respuesta te corriges: eran 2 horas y 50 minutos.",
+      "facts": ["Despues de la primera respuesta dices que la duracion real son 2 horas y 50 minutos."],
+      "checker": {"type": "regex", "pattern": "12[:.h]20", "scope": "answer"},
+      "reference": "Acabas a las 12:20.",
+      "max_turns": 5
+    },
+    {
+      "id": "selfcorrect-sum",
+      "persona": "selfcorrect",
+      "ambiguous": false,
+      "opening": "Suma 120 y 45 y 30.",
+      "hidden_goal": "Suma final de 120, 54 y 30 (resultado 204). Tras la primera respuesta te corriges: el segundo numero era 54, no 45.",
+      "facts": ["Despues de la primera respuesta dices que el segundo numero era 54 y no 45."],
+      "checker": {"type": "regex", "pattern": "(?<![\\d.,])204(?!\\d|[.,]\\d)", "scope": "answer"},
+      "reference": "La suma es 204.",
+      "max_turns": 5
+    }
+  ]
+}
