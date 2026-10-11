@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Run the simulated-user family against Faustus (default) or any OpenAI-compatible chat endpoint.
+"""Run the simulated-user family against Faustus (default) or any chat-completions compatible chat endpoint.
 
     python scripts/simusers_eval.py --simulator-url http://127.0.0.1:8081 --simulator-model qwen --cases vague-savings,hurry-speed
-    python scripts/simusers_eval.py --target openai --target-url http://127.0.0.1:8081 --target-model m --simulator-url ... --simulator-model ...
+    python scripts/simusers_eval.py --target chat --target-url http://127.0.0.1:8081 --target-model m --simulator-url ... --simulator-model ...
 
 Faustus sign-in: FAUSTUS_URL (default http://127.0.0.1:7000), FAUSTUS_USER / FAUSTUS_PASS or FAUSTUS_API_TOKEN; nothing is needed when
 Faustus runs with authentication disabled. The report is JSON on stdout (or --out FILE). It uses the simulator and the target you name:
@@ -23,11 +23,11 @@ from galton_hoard.simusers import FaustusTarget, OpenAISimulator, OpenAITarget, 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--target", choices=("faustus", "openai"), default="faustus")
+    ap.add_argument("--target", choices=("faustus", "chat"), default="faustus")
     ap.add_argument("--target-url", default=os.environ.get("FAUSTUS_URL", "http://127.0.0.1:7000"))
     ap.add_argument("--target-model", default=os.environ.get("FAUSTUS_MODEL", ""))
     ap.add_argument("--endpoint-url", default=os.environ.get("FAUSTUS_ENDPOINT_URL", ""), help="Faustus: model endpoint of the new chats")
-    ap.add_argument("--simulator-url", required=True, help="OpenAI-compatible server that plays the user (no /v1)")
+    ap.add_argument("--simulator-url", required=True, help="chat-completions compatible server that plays the user (no /v1)")
     ap.add_argument("--simulator-model", required=True)
     ap.add_argument("--cases", default="", help="comma separated case ids; default all")
     ap.add_argument("--out", default="")

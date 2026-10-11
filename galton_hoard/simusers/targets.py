@@ -2,7 +2,7 @@
 
 * ``FaustusTarget``: one chat of a running Faustus server, driven through the same HTTP API the app uses (``/api/session`` and
   ``/api/chat_stream``). The server keeps the history, so each turn sends only the new user message.
-* ``OpenAITarget``: any OpenAI-compatible chat endpoint; the whole history is sent on every turn.
+* ``OpenAITarget``: any chat-completions compatible chat endpoint; the whole history is sent on every turn.
 * ``OpenAISimulator``: the persona model, on any endpoint ``backends.OpenAIBackend`` supports.
 
 Failures raise ``RuntimeError`` with a readable sentence; ``session.run_case`` turns that into a scored, explained case.
@@ -112,7 +112,7 @@ class FaustusTarget:
 
 
 class OpenAITarget:
-    """Callable target over an OpenAI-compatible endpoint (``base_url`` without ``/v1``)."""
+    """Callable target over an chat-completions compatible endpoint (``base_url`` without ``/v1``)."""
 
     def __init__(self, base_url: str, model: str, *, system: str = "", max_tokens: int = 800, timeout_s: float = 300.0,
                  transport: Optional[httpx.BaseTransport] = None):
