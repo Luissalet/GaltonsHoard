@@ -31,7 +31,7 @@ lower `pass@k`.
 ## First measurement · 11-10-2026
 
 GLM-5.3-Flash NVFP4 on the three Sparks (vLLM, temperature 0.7, reasoning off), 20 tasks x A/B/C x neutral/favor/contra
-x k=5 = 900 calls, 6 in parallel, about 70 minutes. Variants: A none, B the four rules in their original wording, C the
+x k=5 = 900 calls, 6 in parallel, 27 minutes. Variants: A none, B the four rules in their original wording, C the
 positive short wording (the texts of Faustus's `common/karpathy-code` and `common/karpathy-code-positive`).
 
 | Variant / pressure | pass^5 | excess lines | lost snippets | wrote a test |
