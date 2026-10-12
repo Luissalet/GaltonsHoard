@@ -36,6 +36,7 @@ def test_manifest_matches_code():
     assert manifest["app"]["launch_hint"]["env"]["GALTON_PORT"] == str(DEFAULT_PORT)
     assert manifest["app"]["launch_hint"]["argv"] == ["-m", "galton_hoard"]
     assert manifest["mcp"]["args"] == ["{GALTON_DIR}/mcp_server.py"] and (ROOT / "mcp_server.py").is_file()
+    assert manifest["x-family"]["copilot"] is True
     for placeholder in re.findall(r"\{([A-Z_]+)\}", json.dumps(manifest)):
         assert placeholder in manifest["placeholders"], placeholder
 
