@@ -76,6 +76,16 @@ La interfaz está en castellano o en inglés; los mensajes del servidor (errores
 
 Entorno: `GALTON_PORT` (5201), `GALTON_DATA_DIR`, `PORT_STRICT=1`, `GALTON_ALLOWED_HOSTS`, `GALTON_HTTP_TIMEOUT_S`, `GALTON_SCHEDULER=0` (sin tareas de fondo), `GALTON_OFFLINE=1` (sin búsqueda de modelos), `GALTON_FAKE=1` (demostración), `HOARD_ROUTES_FILE`, y `GALTON_FAUSTUS_TOKEN` en `.env` (véase `.env.example`). Todo lo demás es un ajuste guardado en `data/galton.db` que se cambia en la aplicación.
 
+## Asistente de Faustus
+
+Con el lanzador compartido de Hoard Link instalado, la app muestra el panel de Faustus de la familia (un botón flotante). La conversación, el modelo y las herramientas viven en Faustus; esta app solo le dice al panel qué hay abierto.
+
+- **Contexto por vista.** El panel recibe los objetos abiertos en la vista actual con sus ids reales, leídos por el mismo endpoint de herramientas que usa la interfaz: `model` (`model_get`: nombre, activado, tipo, familia, cuantización, visión, alias), `suite` (`suite_get` sin casos), `case` (`case_get`) y `run` (`run_status`: estado, suites, modelos). Cuenta una suite o ejecución que esté en la URL, y también los cajones de modelo y de caso abiertos. La vista indica la página (`dashboard`, `models`, `tests`, `run`, `leaderboard`, `arena`, `routes`, `settings`). Los formularios de creación no dan objeto.
+- **Campos sin guardar.** El panel los pide con el evento de ventana `galton:context-request`. Los formularios `settings-form`, `run-form`, `model-form`, `model-add-form`, `suite-form`, `case-form` y `cases-import-form` responden con lo escrito y `dirty`; el texto pegado para importar se corta a 4.000 caracteres.
+- **Refresco.** Cuando el asistente termina un turno, la vista abierta se recarga en el sitio (`hoard:copilot-turn-end` / `window.hoardCopilot.onTurnEnd`). Los campos que editaste conservan tu valor, y las listas como alias o etiquetas fusionan lo que añadiste o quitaste con la lista nueva.
+- **Guardado.** Los formularios envían solo los campos que han cambiado. `settings_set` tiene un argumento nuevo, `merge`: en los ajustes de tipo objeto (`routes.policy`) solo cambian los campos dados y el resto se queda como está; sin él, los campos no dados vuelven a sus valores por defecto. Véase `docs/API.md`.
+- **Pruebas.** `node --test client/copilot-context.test.mjs` y `python -m pytest tests/test_partial_updates.py tests/test_manifest.py`.
+
 ## Asistentes (MCP)
 
 `mcp_server.py` es un puente MCP por stdio llamado `galton-hoard` (el puente compartido de Hoard Link). No abre la base de datos: reenvía cada llamada a la aplicación en marcha con el token de `data/mcp-token`, actualiza la lista de herramientas mientras funciona y arranca la aplicación si no responde. Las llamadas pueden tardar hasta 660 segundos; las herramientas que esperan a una ejecución (`wait_s`, hasta 600 segundos) o al juez lo indican en el catálogo, y una ejecución que supera `wait_s` responde `still_running: true` y sigue. `faustus-plugin.json` describe la aplicación, su comprobación de salud y el puente para Faustus y el Hoard Hub.

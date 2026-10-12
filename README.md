@@ -76,6 +76,16 @@ The UI is Spanish or English; the messages of the backend (errors with their hin
 
 Environment: `GALTON_PORT` (5201), `GALTON_DATA_DIR`, `PORT_STRICT=1`, `GALTON_ALLOWED_HOSTS`, `GALTON_HTTP_TIMEOUT_S`, `GALTON_SCHEDULER=0` (no background jobs), `GALTON_OFFLINE=1` (no discovery), `GALTON_FAKE=1` (demo), `HOARD_ROUTES_FILE`, and `GALTON_FAUSTUS_TOKEN` in `.env` (see `.env.example`). Everything else is a setting stored in `data/galton.db` and changed in the app.
 
+## Faustus assistant
+
+Once the shared Hoard Link launcher is installed, the app shows the family's Faustus panel (a floating button). The conversation, the model and the tools live in Faustus; this app only tells the panel what is open.
+
+- **Context per view.** The panel receives the objects open in the current view with their real ids, read through the same tool endpoint the UI uses: `model` (`model_get`: name, enabled, kind, family, quant, vision, aliases), `suite` (`suite_get` without cases), `case` (`case_get`) and `run` (`run_status`: state, suites, models). A suite or run in the URL counts, and so do open model and case drawers. The view names the page (`dashboard`, `models`, `tests`, `run`, `leaderboard`, `arena`, `routes`, `settings`). Creation forms give no object.
+- **Unsaved fields.** The panel asks for them with the `galton:context-request` window event. The forms `settings-form`, `run-form`, `model-form`, `model-add-form`, `suite-form`, `case-form` and `cases-import-form` answer with their typed fields and `dirty`; pasted import text is cut to 4,000 characters.
+- **Refresh.** When the assistant finishes a turn the open view reloads in place (`hoard:copilot-turn-end` / `window.hoardCopilot.onTurnEnd`). Fields you edited keep your value, and lists such as aliases or tags merge what you added or removed into the new list.
+- **Saving.** Forms send only the fields that changed. `settings_set` has a new `merge` argument: for object settings (`routes.policy`) only the given fields change and the rest stay as they are; without it, fields not given go back to their defaults. See `docs/API.md`.
+- **Tests.** `node --test client/copilot-context.test.mjs` and `python -m pytest tests/test_partial_updates.py tests/test_manifest.py`.
+
 ## Assistants (MCP)
 
 `mcp_server.py` is a stdio MCP bridge named `galton-hoard` (the shared bridge of Hoard Link). It never opens the database: it proxies every call to the running app with the token in `data/mcp-token`, refreshes the tool list while it runs, and starts the app when it is not answering. Calls may take up to 660 seconds; the tools that wait for a run (`wait_s`, up to 600 seconds) or for the judge say so in the catalogue, and a run that outlasts `wait_s` answers `still_running: true` and goes on. `faustus-plugin.json` describes the app, its health check and the bridge for Faustus and the Hoard Hub.
