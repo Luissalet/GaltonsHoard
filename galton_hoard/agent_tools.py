@@ -358,6 +358,7 @@ class ArenaRatingsArgs(BaseModel):
 
 class SettingsSetArgs(BaseModel):
     values: dict[str, Any] = Field(..., description="Setting key -> value. See settings_get for the keys and types.")
+    merge: bool = Field(False, description="For object settings (routes.policy): change only the fields given and keep the others as they are now. Without it the fields not given go back to their defaults.")
     confirm_reserved: bool = Field(False, description="Needed to allow a GPU that is reserved for the owner of this computer: only if the user explicitly said so.")
 
 
@@ -801,6 +802,10 @@ def run_settings_set(svc: Services, a: SettingsSetArgs) -> dict[str, Any]:
     values = dict(a.values)
     if values.get("judge.contestant"):
         values["judge.contestant"] = _model(svc, str(values["judge.contestant"]))["id"]
+    if a.merge:
+        for key, value in list(values.items()):
+            if isinstance(value, dict) and isinstance(svc.settings.get(key), dict):
+                values[key] = {**svc.settings.get(key), **value}
     out = svc.settings.set_many(values, confirm_reserved=a.confirm_reserved)
     svc.routes_changed()
     return {"settings": out, "changed": sorted(values)}
