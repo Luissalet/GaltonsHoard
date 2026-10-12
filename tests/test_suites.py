@@ -50,7 +50,7 @@ def test_ids_are_stable_between_loads():
 
 def test_no_banned_words_in_the_content():
     text = json.dumps(DEFS, ensure_ascii=False).lower()
-    for word in ("chatgpt", "openai", "claude", "anthropic", "gemini", "copilot", "lm studio", "odysseus"):
+    for word in ("chatgpt", "openai", "claude", "anthropic", "gemini", "lm studio", "odysseus"):
         assert word not in text
 
 

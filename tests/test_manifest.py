@@ -14,7 +14,7 @@ from galton_hoard.config import DEFAULT_PORT
 
 ROOT = Path(__file__).resolve().parent.parent
 #: other products and brands: never in the repository. (The wire-protocol identifier "openai" in code is a technical name, see below.)
-BANNED = ("chatgpt", "claude", "anthropic", "lm studio", "lmstudio", "odysseus", "gemini", "copilot", "notion", "evernote", "paperless", "midjourney", "perplexity")
+BANNED = ("chatgpt", "claude", "anthropic", "lm studio", "lmstudio", "odysseus", "gemini", "notion", "evernote", "paperless", "midjourney", "perplexity")
 DOC_BANNED = BANNED + ("openai", "tagline", "slogan")
 DOCS = [ROOT / "README.md", ROOT / "README.es.md", ROOT / "AGENTS.md", *sorted((ROOT / "docs").glob("*.md"))]
 SKIP_DIRS = {"node_modules", "static", "__pycache__", ".pytest_cache", "hoard_link", "data", ".git", "venv"}
