@@ -652,6 +652,7 @@ Annotations: idempotentHint.
 | Argument | Required | Description |
 |---|---|---|
 | `values` (object) | yes | Setting key -> value. See settings_get for the keys and types. |
+| `merge` (boolean) | no | For object settings (routes.policy): change only the fields given and keep the others as they are now. Without it the fields not given go back to their defaults. |
 | `confirm_reserved` (boolean) | no | Needed to allow a GPU that is reserved for the owner of this computer: only if the user explicitly said so. |
 
 ## `gpu_status`
