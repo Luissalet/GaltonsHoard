@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
-import { answers } from "../copilot-context.js";
+import { acknowledgeDraft, answers } from "../copilot-context.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, ErrorBox, Field, Icon, ICONS, Section, Spinner, Switch, useBusy, useLoad } from "../components/ui.jsx";
 import { GpuStrip } from "../components/parts.jsx";
@@ -83,14 +83,14 @@ export default function Ajustes() {
   // The policy draft holds only the fields the user touched; they are merged onto the saved policy, so the others keep the assistant's values.
   const setPolicy = (name) => (v) => setDraft((d) => ({ ...d, "routes.policy": { ...(d["routes.policy"] || {}), [name]: v } }));
   const dirty = (keys) => keys.some((k) => k in draft);
-  const saved = (keys) => setDraft((d) => Object.fromEntries(Object.entries(d).filter(([k]) => !keys.includes(k))));
+  const saved = (sent) => setDraft((d) => acknowledgeDraft(d, sent));
 
   const save = (keys, extra = {}) => run(`save-${keys[0]}`, async () => {
     const payload = {};
     for (const k of keys) if (k in draft) payload[k] = draft[k];
     if (!Object.keys(payload).length) return;
     await api.call("settings_set", { values: payload, merge: true, ...extra });
-    saved(keys);
+    saved(payload);
     notify(t("saved"));
     changed();
     settings.reload();
@@ -115,8 +115,9 @@ export default function Ajustes() {
     }
     const payload = { "gpus.allowed": wanted };
     if ("gpus.reserved" in draft) payload["gpus.reserved"] = draft["gpus.reserved"];
+    const sent = Object.fromEntries(Object.keys(payload).filter((key) => key in draft).map((key) => [key, draft[key]]));
     await api.call("settings_set", { values: payload, ...extra });
-    saved(["gpus.allowed", "gpus.reserved"]);
+    saved(sent);
     notify(t("saved"));
     changed();
     settings.reload();

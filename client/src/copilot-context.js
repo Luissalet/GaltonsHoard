@@ -9,6 +9,22 @@ export function changedFields(initial, draft) {
   return Object.fromEntries(Object.entries(draft || {}).filter(([key, value]) => !same(value, (initial || {})[key])));
 }
 
+// A response acknowledges what was submitted, not edits made while waiting.
+export function acknowledgeDraft(draft, sent) {
+  const out = { ...draft };
+  for (const [key, value] of Object.entries(sent || {})) {
+    const current = out[key];
+    if (same(current, value)) {
+      delete out[key];
+    } else if (value && current && typeof value === 'object' && typeof current === 'object' && !Array.isArray(value) && !Array.isArray(current)) {
+      const remaining = Object.fromEntries(Object.entries(current).filter(([field, pending]) => !(field in value) || !same(pending, value[field])));
+      if (Object.keys(remaining).length) out[key] = remaining;
+      else delete out[key];
+    }
+  }
+  return out;
+}
+
 // A form was loaded from `oldBase`, the user edited it into `form`, and the object has been reloaded as `newBase`
 // (the assistant changed it meanwhile): keep what the user touched, take the new value of everything else.
 // The base keeps the OLD value of the touched fields, so a later save still sees them as changed and a list merge knows what the user removed.
@@ -112,12 +128,15 @@ export function candidates(route, open) {
 // The whole context. `call(name, args)`, `hash`, `open` and `editors(objectId)` are injected so the function is testable.
 export async function buildContext({ hash, call, open = [], editors = () => [] }) {
   const route = parseHash(hash);
-  const found = await Promise.all(candidates(route, open).map((c) => fetchObject(call, c.kind, c.id)));
+  const requested = candidates(route, open);
+  const pending = new Map(requested.map((c) => [c.id, editors(c.id)]));
+  const creation = editors(null);
+  const found = await Promise.all(requested.map((c) => fetchObject(call, c.kind, c.id)));
   const active = found.filter(Boolean);
   const view = { page: PAGE_NAMES[route.page] || route.page || "dashboard" };
   const focus = active[active.length - 1];
   if (focus) view.object_id = focus.object_id;
-  const snaps = [...(focus ? editors(focus.object_id) : []), ...editors(null)];
+  const snaps = [...(focus ? pending.get(focus.object_id) || [] : []), ...creation];
   const unique = snaps.filter((s, i) => snaps.findIndex((o) => o.kind === s.kind) === i);
   if (unique.length) {
     view.editor = unique[0];

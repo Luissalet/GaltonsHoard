@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+import threading
 
 from conftest import tool
 from helpers import add_gguf
@@ -47,3 +48,53 @@ def test_settings_set_merge_changes_only_the_given_policy_fields(svc):
 def test_settings_set_merge_still_rejects_unknown_fields(svc):
     with pytest.raises(GaltonError):
         tool(svc, "settings_set", values={"routes.policy": {"colour": 1}}, merge=True)
+
+
+def test_overlapping_policy_patches_keep_both_completed_changes(svc, monkeypatch):
+    tool(svc, "settings_set", values={"routes.policy": {"days": 30, "top_k": 3}})
+    original_read = svc.settings.get
+    original_write = svc.settings.set_many
+    first_write = threading.Event()
+    release = threading.Event()
+    second_started = threading.Event()
+    second_done = threading.Event()
+    errors = []
+
+    def write(values, **kwargs):
+        if "routes.policy" in values and threading.current_thread().name == "edit-days" and not first_write.is_set():
+            first_write.set()
+            assert release.wait(5)
+        return original_write(values, **kwargs)
+
+    monkeypatch.setattr(svc.settings, "set_many", write)
+
+    def edit(patch, second=False):
+        try:
+            if second:
+                second_started.set()
+            tool(svc, "settings_set", values={"routes.policy": patch}, merge=True)
+        except Exception as exc:
+            errors.append(exc)
+        finally:
+            if second:
+                second_done.set()
+
+    first = threading.Thread(target=edit, args=({"days": 7},), name="edit-days")
+    second = threading.Thread(target=edit, args=({"top_k": 2}, True), name="edit-top")
+    first.start()
+    try:
+        assert first_write.wait(5)
+        second.start()
+        assert second_started.wait(5)
+        # Let an unprotected second writer finish while the first holds its old read.
+        # A transaction keeps that writer waiting until the first is released.
+        second_done.wait(0.5)
+    finally:
+        release.set()
+        first.join(5)
+        if second.ident is not None:
+            second.join(5)
+    assert not first.is_alive() and not second.is_alive()
+    assert not errors, errors
+    policy = original_read("routes.policy")
+    assert policy["days"] == 7 and policy["top_k"] == 2

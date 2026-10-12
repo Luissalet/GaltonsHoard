@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { answers, buildContext, changedFields, mergeList, parseHash, rebase, registerOpen, openList } from './src/copilot-context.js';
+import { acknowledgeDraft, answers, buildContext, changedFields, mergeList, parseHash, rebase, registerOpen, openList } from './src/copilot-context.js';
 
 test('only the fields the user changed are reported, including manual clears', () => {
   assert.deepEqual(changedFields({ name: 'Old', notes: 'Before', mmproj: '/x.gguf' }, { name: 'Old', notes: 'Manual', mmproj: '' }), { notes: 'Manual', mmproj: '' });
@@ -76,4 +76,29 @@ test('run route and model drawer; creation forms are reported without an object'
   const creation = await buildContext({ hash: '#/ejecutar', call, editors: () => [{ kind: 'run-form', dirty: true, fields: { suites: ['s'] } }] });
   assert.deepEqual(creation.active_objects, []);
   assert.equal(creation.view.editor.fields.suites[0], 's');
+});
+
+test('pending native context retains its form when navigation mounts another form', async () => {
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  let form = { kind: 'suite-form', dirty: true, fields: { description: 'Original draft' } };
+  const snapshot = buildContext({ hash: '#/pruebas/s_mine', call: async (name, args) => { await pending; return call(name, args); },
+    editors: (id) => id == null ? [form] : [] });
+  form = { kind: 'settings-form', dirty: true, fields: { days: 7 } };
+  release();
+  const old = await snapshot;
+  assert.equal(old.view.page, 'tests');
+  assert.equal(old.active_objects[0].object_id, 's_mine');
+  assert.equal(old.view.editor.kind, 'suite-form');
+  assert.equal(old.view.editor.fields.description, 'Original draft');
+  const next = await buildContext({ hash: '#/ajustes', call, editors: () => [form] });
+  assert.equal(next.view.page, 'settings');
+  assert.equal(next.view.editor.kind, 'settings-form');
+});
+
+test('acknowledging a settings save preserves later nested fields and sibling edits', () => {
+  const sent = { 'routes.policy': { days: '7', top_k: '2' }, 'ui.language': 'en' };
+  const pending = { 'routes.policy': { days: '8', top_k: '2', min_cases: '12' }, 'ui.language': 'en', 'runner.timeout_s': '150' };
+  assert.deepEqual(acknowledgeDraft(pending, sent), { 'routes.policy': { days: '8', min_cases: '12' }, 'runner.timeout_s': '150' });
+  assert.deepEqual(acknowledgeDraft(sent, sent), {});
 });

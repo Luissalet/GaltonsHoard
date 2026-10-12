@@ -802,11 +802,14 @@ def run_settings_set(svc: Services, a: SettingsSetArgs) -> dict[str, Any]:
     values = dict(a.values)
     if values.get("judge.contestant"):
         values["judge.contestant"] = _model(svc, str(values["judge.contestant"]))["id"]
-    if a.merge:
-        for key, value in list(values.items()):
-            if isinstance(value, dict) and isinstance(svc.settings.get(key), dict):
-                values[key] = {**svc.settings.get(key), **value}
-    out = svc.settings.set_many(values, confirm_reserved=a.confirm_reserved)
+    with svc.db.transaction():
+        if a.merge:
+            for key, value in list(values.items()):
+                if isinstance(value, dict):
+                    current = svc.settings.get(key)
+                    if isinstance(current, dict):
+                        values[key] = {**current, **value}
+        out = svc.settings.set_many(values, confirm_reserved=a.confirm_reserved)
     svc.routes_changed()
     return {"settings": out, "changed": sorted(values)}
 
