@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { answers, changedFields, rebase, registerOpen } from "../copilot-context.js";
 import { api } from "../api.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, Drawer, Empty, ErrorBox, Field, Icon, ICONS, Modal, Section, Spinner, Switch, useBusy, useLoad } from "../components/ui.jsx";
@@ -52,21 +53,48 @@ function promptParts(prompt) {
   return { text: prompt.text || "", system: prompt.system || "", messages: null };
 }
 
+const EMPTY_CASE = { title: "", text: "", system: "", expected: "", checker: "", weight: 1, tags: "", notes: "", messages: null };
+
+function formOfCase(c) {
+  const p = promptParts(c.prompt);
+  return { title: c.title, text: p.text, system: p.system, expected: c.reference || "", checker: JSON.stringify(c.checker), weight: c.weight, tags: (c.tags || []).join(", "), notes: c.notes || "", messages: p.messages };
+}
+
 function CaseEditor({ suite, caseId, onClose, onSaved }) {
-  const { t, notify, confirm } = useApp();
+  const { t, notify, confirm, version } = useApp();
   const editable = !suite.builtin;
-  const { data, error, loading } = useLoad(() => (caseId ? api.call("case_get", { case: caseId }) : Promise.resolve(null)), [caseId]);
+  const { data, error, loading } = useLoad(() => (caseId ? api.call("case_get", { case: caseId }) : Promise.resolve(null)), [caseId, version]);
   const [form, setForm] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [busy, run] = useBusy();
   const c = data?.case;
+  // `sync.base` is the form as last loaded. When the case is reloaded while the user is typing (the assistant changed it), what the user touched stays.
+  const sync = useRef({ key: null, base: null });
+  const latest = useRef(null);
+  latest.current = form;
   useEffect(() => {
-    if (!caseId) setForm({ title: "", text: "", system: "", expected: "", checker: "", weight: 1, tags: "", notes: "", messages: null });
-    else if (c) {
-      const p = promptParts(c.prompt);
-      setForm({ title: c.title, text: p.text, system: p.system, expected: c.reference || "", checker: JSON.stringify(c.checker), weight: c.weight, tags: (c.tags || []).join(", "), notes: c.notes || "", messages: p.messages });
+    const key = caseId || "new";
+    if (!caseId) {
+      if (sync.current.key !== key) { sync.current = { key, base: EMPTY_CASE }; setForm(EMPTY_CASE); }
+      return;
     }
+    if (!c || c.id !== caseId) return;
+    const next = formOfCase(c);
+    if (sync.current.key !== key || !latest.current) { sync.current = { key, base: next }; setForm(next); return; }
+    const r = rebase(sync.current.base, latest.current, next);
+    sync.current.base = r.base;
+    setForm(r.form);
   }, [caseId, c]);
+  useEffect(() => registerOpen("case", caseId), [caseId]);
+  useEffect(() => {                       // the assistant panel asks for the unsaved fields (editing this case, or the creation form)
+    const provide = (event) => {
+      if (!answers(event, caseId || null) || !sync.current.base || !latest.current) return;
+      const fields = changedFields(sync.current.base, latest.current);
+      event.detail.provide({ kind: "case-form", suite_id: suite.id, dirty: Object.keys(fields).length > 0, fields });
+    };
+    window.addEventListener("galton:context-request", provide);
+    return () => window.removeEventListener("galton:context-request", provide);
+  }, [caseId, suite.id]);
   if (!form) return <Drawer title={t("case")} onClose={onClose}>{loading ? <Spinner /> : <ErrorBox error={error} />}</Drawer>;
   const set = (k) => (e) => { setDirty(true); setForm((f) => ({ ...f, [k]: e.target.value })); };
   const checkerArg = () => {
@@ -81,10 +109,17 @@ function CaseEditor({ suite, caseId, onClose, onSaved }) {
     const common = { title: form.title, expected: form.expected, weight: Number(form.weight) || 1, tags: splitList(form.tags), notes: form.notes };
     const checker = checkerArg();
     if (caseId) {
-      const args = { case: caseId, ...common, system: form.system };
-      if (!form.messages) args.prompt = form.text;
-      if (checker !== undefined && form.checker.trim() !== JSON.stringify(c.checker)) args.checker = checker;
-      await api.call("case_update", args);
+      // Only what the user changed goes to the server, so an edit the assistant made meanwhile is not overwritten.
+      const base = sync.current.base;
+      const fields = changedFields(base, form);
+      if (Number(form.weight) === Number(base.weight)) delete fields.weight;
+      const args = { case: caseId };
+      for (const k of ["title", "expected", "notes", "system"]) if (k in fields) args[k] = form[k];
+      if ("weight" in fields) args.weight = common.weight;
+      if ("tags" in fields) args.tags = common.tags;
+      if ("text" in fields && !form.messages) args.prompt = form.text;
+      if ("checker" in fields && checker !== undefined) args.checker = checker;
+      if (Object.keys(args).length > 1) await api.call("case_update", args);
     } else {
       await api.call("case_add", { suite: suite.id, ...common, prompt: form.text, system: form.system, ...(checker !== undefined ? { checker } : {}) });
     }
@@ -135,6 +170,17 @@ function ImportModal({ suite, onClose, onDone }) {
   const [format, setFormat] = useState("auto");
   const [checker, setChecker] = useState("");
   const [busy, run] = useBusy();
+  const latest = useRef({});
+  latest.current = { text, format, checker };
+  useEffect(() => {                       // the assistant panel asks for the unsaved fields
+    const provide = (event) => {
+      if (!answers(event, null)) return;
+      const { text: pasted, format: fmt, checker: chk } = latest.current;
+      event.detail.provide({ kind: "cases-import-form", suite_id: suite.id, dirty: !!(pasted || chk), fields: { text: pasted.slice(0, 4000), format: fmt, default_checker: chk } });
+    };
+    window.addEventListener("galton:context-request", provide);
+    return () => window.removeEventListener("galton:context-request", provide);
+  }, [suite.id]);
   const [result, setResult] = useState(null);
   const onFile = async (e) => {
     const f = e.target.files?.[0];
@@ -214,11 +260,24 @@ function BenchmarkModal({ onClose, onDone }) {
   );
 }
 
+const EMPTY_SUITE = { name: "", description: "", category: "custom", max_tokens: 512 };
+
 function NewSuiteModal({ onClose, onDone }) {
   const { t, notify } = useApp();
-  const [form, setForm] = useState({ name: "", description: "", category: "custom", max_tokens: 512 });
+  const [form, setForm] = useState(EMPTY_SUITE);
   const [busy, run] = useBusy();
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const latest = useRef(form);
+  latest.current = form;
+  useEffect(() => {                       // the assistant panel asks for the unsaved fields of the creation form
+    const provide = (event) => {
+      if (!answers(event, null)) return;
+      const fields = changedFields(EMPTY_SUITE, latest.current);
+      event.detail.provide({ kind: "suite-form", dirty: Object.keys(fields).length > 0, fields });
+    };
+    window.addEventListener("galton:context-request", provide);
+    return () => window.removeEventListener("galton:context-request", provide);
+  }, []);
   const submit = (e) => {
     e.preventDefault();
     run("create", async () => {

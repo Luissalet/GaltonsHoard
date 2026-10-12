@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import "./hoard-theme.css";
 import "./index.css";
+import { installCopilot } from "./copilot-context.js";
+
+installCopilot();           // window.hoardCopilot for the shared assistant panel: context() and onTurnEnd()
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
+import { answers, changedFields } from "../copilot-context.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, Empty, ErrorBox, Failure, Field, Icon, ICONS, Modal, Problem, Rel, Section, Spinner, Switch, useBusy, useLoad } from "../components/ui.jsx";
 import { CpuBadge, Progress, StateChip } from "../components/parts.jsx";
@@ -8,16 +9,32 @@ import { ACTIVE_STATES, CATEGORIES, EFFORTS, RESUMABLE_STATES as RESUMABLE } fro
 import { duration, elapsed, gb, num, shortClock } from "../format.js";
 
 // ------------------------------------------------------------------ the form
+const DEFAULT_RUN_SETTINGS = { repeats: 1, temperature: 0, effort: "", device: "auto", context: "", max_tokens: "", timeout_s: "" };
+
 function NewRun({ query }) {
   const { t, lang, version, changed, notify } = useApp();
   const suitesLoad = useLoad(() => api.call("suites_list", {}), [version]);
   const modelsLoad = useLoad(() => api.call("models_list", { enabled: true, limit: 200 }), [version]);
   const [suites, setSuites] = useState(() => new Set(query.get("suite") ? [query.get("suite")] : []));
   const [models, setModels] = useState(() => new Set(query.get("model") ? [query.get("model")] : []));
-  const [settings, setSettings] = useState({ repeats: 1, temperature: 0, effort: "", device: "auto", context: "", max_tokens: "", timeout_s: "" });
+  const [settings, setSettings] = useState(DEFAULT_RUN_SETTINGS);
   const [plan, setPlan] = useState(null);
   const [planError, setPlanError] = useState(null);
   const [busy, run] = useBusy();
+  const latest = useRef({});
+  latest.current = { suites, models, settings };
+  useEffect(() => {                       // the assistant panel asks for the unsaved fields of this creation form
+    const provide = (event) => {
+      if (!answers(event, null)) return;
+      const { suites: s, models: m, settings: st } = latest.current;
+      const fields = changedFields(DEFAULT_RUN_SETTINGS, st);
+      if (s.size) fields.suites = [...s];
+      if (m.size) fields.models = [...m];
+      event.detail.provide({ kind: "run-form", dirty: Object.keys(fields).length > 0, fields });
+    };
+    window.addEventListener("galton:context-request", provide);
+    return () => window.removeEventListener("galton:context-request", provide);
+  }, []);
   const allSuites = suitesLoad.data?.suites || [];
   const allModels = modelsLoad.data?.models || [];
 
@@ -257,7 +274,7 @@ function DiscardModal({ run, onClose, onDone }) {
 }
 
 function RunDetail({ id }) {
-  const { t, lang, changed, notify, confirm } = useApp();
+  const { t, lang, changed, notify, confirm, version } = useApp();
   const [discarding, setDiscarding] = useState(false);
   const [run, setRun] = useState(null);
   const [error, setError] = useState(null);
@@ -289,6 +306,7 @@ function RunDetail({ id }) {
   const live = !run || ACTIVE_STATES.has(run.state) || run.pending_judge > 0;
   usePoll(pull, 1500, live);
   useEffect(() => { if (run && !live) pull(); }, [run?.state]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (version) pull(); }, [version]); // eslint-disable-line react-hooks/exhaustive-deps -- the assistant may have discarded or restored this run
 
   const cancel = () => act("cancel", async () => {
     if (!(await confirm({ title: t("cancel_run"), message: cancelMessage(run, t), confirmLabel: t("cancel_run") }))) return;

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
+import { answers, changedFields, mergeList, rebase, registerOpen } from "../copilot-context.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, Drawer, Empty, ErrorBox, Field, Icon, ICONS, Modal, Rel, Section, Spinner, Switch, Tabs, useBusy, useLoad } from "../components/ui.jsx";
 import { MemoryChip, Score } from "../components/parts.jsx";
@@ -35,12 +36,25 @@ function whereText(m, t) {
   }
 }
 
+const EMPTY_ADD = { url: "", model: "", api: "", path: "", mmproj: "", name: "", remote_ok: false };
+
 function AddModal({ onClose, onDone }) {
   const { t, notify } = useApp();
   const [tab, setTab] = useState("server");
-  const [form, setForm] = useState({ url: "", model: "", api: "", path: "", mmproj: "", name: "", remote_ok: false });
+  const [form, setForm] = useState(EMPTY_ADD);
   const [busy, run] = useBusy();
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const latest = useRef({ tab, form });
+  latest.current = { tab, form };
+  useEffect(() => {                       // the assistant panel asks for the unsaved fields of the creation form
+    const provide = (event) => {
+      if (!answers(event, null)) return;
+      const fields = changedFields(EMPTY_ADD, latest.current.form);
+      event.detail.provide({ kind: "model-add-form", dirty: Object.keys(fields).length > 0, fields: { source: latest.current.tab, ...fields } });
+    };
+    window.addEventListener("galton:context-request", provide);
+    return () => window.removeEventListener("galton:context-request", provide);
+  }, []);
   const submit = (e) => {
     e.preventDefault();
     run("add", async () => {
@@ -89,17 +103,56 @@ function AddModal({ onClose, onDone }) {
   );
 }
 
+const formOfModel = (m) => ({ name: m.name, aliases: m.aliases.join("\n"), vision: m.vision, mmproj: m.mmproj || "", remote_ok: m.remote_ok });
+
 function Detail({ id, onClose, onChanged }) {
-  const { t, lang, confirm, notify } = useApp();
-  const { data, error, loading, reload } = useLoad(() => api.call("model_get", { model: id }), [id]);
+  const { t, lang, confirm, notify, version } = useApp();
+  const { data, error, loading, reload } = useLoad(() => api.call("model_get", { model: id }), [id, version]);
   const [busy, run] = useBusy();
   const [edit, setEdit] = useState(null);
   const m = data?.model;
-  const form = edit || (m ? { name: m.name, aliases: m.aliases.join("\n"), vision: m.vision, mmproj: m.mmproj || "", remote_ok: m.remote_ok } : null);
+  const form = edit || (m ? formOfModel(m) : null);
   const setField = (k, v) => setEdit({ ...form, [k]: v });
 
+  // `base` is the form as last loaded. When the model is reloaded while the user is typing (the assistant changed it), what the user touched stays.
+  const base = useRef(null);
+  const latest = useRef(null);
+  const editing = useRef(null);
+  latest.current = form;
+  editing.current = edit;                 // null until the user types: then the form simply follows the loaded model
+  useEffect(() => {
+    if (!m) return;
+    const next = formOfModel(m);
+    if (base.current && editing.current && Object.keys(changedFields(base.current, editing.current)).length) {
+      const r = rebase(base.current, editing.current, next);
+      base.current = r.base;
+      setEdit(r.form);
+    } else {
+      base.current = next;
+      setEdit(null);
+    }
+  }, [m]);
+  useEffect(() => registerOpen("model", id), [id]);
+  useEffect(() => {                       // the assistant panel asks for the unsaved fields
+    const provide = (event) => {
+      if (!answers(event, id) || !base.current || !latest.current) return;
+      const fields = changedFields(base.current, latest.current);
+      event.detail.provide({ kind: "model-form", dirty: Object.keys(fields).length > 0, fields });
+    };
+    window.addEventListener("galton:context-request", provide);
+    return () => window.removeEventListener("galton:context-request", provide);
+  }, [id]);
+
   const save = () => run("save", async () => {
-    await api.call("model_update", { model: id, name: form.name, aliases: splitList(form.aliases), vision: form.vision, mmproj: form.mmproj, remote_ok: form.remote_ok });
+    // Only what the user changed goes to the server, so an edit the assistant made meanwhile is not overwritten.
+    const fields = changedFields(base.current, form);
+    const args = { model: id };
+    for (const k of ["name", "vision", "mmproj", "remote_ok"]) if (k in fields) args[k] = form[k];
+    if ("aliases" in fields) {
+      const fresh = await api.call("model_get", { model: id });
+      args.aliases = mergeList(splitList(base.current.aliases), splitList(form.aliases), fresh.model.aliases);
+    }
+    if (Object.keys(args).length > 1) await api.call("model_update", args);
     setEdit(null);
     notify(t("saved"));
     await reload();

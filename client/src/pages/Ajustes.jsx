@@ -1,9 +1,24 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
+import { answers } from "../copilot-context.js";
 import { useApp } from "../context.js";
 import { Busy, Chip, ErrorBox, Field, Icon, ICONS, Section, Spinner, Switch, useBusy, useLoad } from "../components/ui.jsx";
 import { GpuStrip } from "../components/parts.jsx";
 import { gb } from "../format.js";
+
+const looksSame = (a, b) => JSON.stringify(a) === JSON.stringify(b) || String(a) === String(b);
+
+// The draft without the fields that already equal the saved values (for the policy: field by field).
+function pruneDraft(draft, values) {
+  const out = {};
+  for (const [key, value] of Object.entries(draft)) {
+    if (key === "routes.policy" && value && typeof value === "object") {
+      const rest = Object.fromEntries(Object.entries(value).filter(([name, v]) => !looksSame(v, (values[key] || {})[name])));
+      if (Object.keys(rest).length) out[key] = rest;
+    } else if (!looksSame(value, values[key])) out[key] = value;
+  }
+  return Object.keys(out).length === Object.keys(draft).length && Object.keys(out).every((k) => out[k] === draft[k]) ? draft : out;
+}
 
 const POLICY_FIELDS = ["days", "min_tok_s", "max_vram_gb", "weight_quality", "weight_speed", "min_cases", "top_k"];
 
@@ -47,18 +62,35 @@ export default function Ajustes() {
 
   const values = settings.data?.values || {};
   const specs = useMemo(() => Object.fromEntries((settings.data?.spec || []).map((s) => [s.key, { ...s, configured: values[s.key]?.configured }])), [settings.data]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setDraft({}); }, [settings.data]);
+  const specsRef = useRef(specs);
+  specsRef.current = specs;
+  // The settings are reloaded when the assistant changes something: drop the draft fields that now equal the saved value and keep what the user is still typing.
+  useEffect(() => { if (settings.data) setDraft((d) => pruneDraft(d, settings.data.values || {})); }, [settings.data]);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  useEffect(() => {                       // the assistant panel asks for the unsaved fields
+    const provide = (event) => {
+      if (!answers(event, null)) return;
+      const fields = Object.fromEntries(Object.entries(draftRef.current).map(([k, v]) => [k, specsRef.current[k]?.kind === "secret" ? "(typed, hidden)" : v]));
+      event.detail.provide({ kind: "settings-form", dirty: Object.keys(fields).length > 0, fields });
+    };
+    window.addEventListener("galton:context-request", provide);
+    return () => window.removeEventListener("galton:context-request", provide);
+  }, []);
 
   const current = (key) => (key in draft ? draft[key] : (specs[key]?.kind === "secret" ? "" : values[key]));
   const set = (key) => (v) => setDraft((d) => ({ ...d, [key]: v }));
-  const setPolicy = (name) => (v) => setDraft((d) => ({ ...d, "routes.policy": { ...(d["routes.policy"] || values["routes.policy"]), [name]: v } }));
+  // The policy draft holds only the fields the user touched; they are merged onto the saved policy, so the others keep the assistant's values.
+  const setPolicy = (name) => (v) => setDraft((d) => ({ ...d, "routes.policy": { ...(d["routes.policy"] || {}), [name]: v } }));
   const dirty = (keys) => keys.some((k) => k in draft);
+  const saved = (keys) => setDraft((d) => Object.fromEntries(Object.entries(d).filter(([k]) => !keys.includes(k))));
 
   const save = (keys, extra = {}) => run(`save-${keys[0]}`, async () => {
     const payload = {};
     for (const k of keys) if (k in draft) payload[k] = draft[k];
     if (!Object.keys(payload).length) return;
-    await api.call("settings_set", { values: payload, ...extra });
+    await api.call("settings_set", { values: payload, merge: true, ...extra });
+    saved(keys);
     notify(t("saved"));
     changed();
     settings.reload();
@@ -84,6 +116,7 @@ export default function Ajustes() {
     const payload = { "gpus.allowed": wanted };
     if ("gpus.reserved" in draft) payload["gpus.reserved"] = draft["gpus.reserved"];
     await api.call("settings_set", { values: payload, ...extra });
+    saved(["gpus.allowed", "gpus.reserved"]);
     notify(t("saved"));
     changed();
     settings.reload();
@@ -100,7 +133,7 @@ export default function Ajustes() {
   if (!settings.data) return <div className="space-y-3"><h1>{t("nav_settings")}</h1><ErrorBox error={settings.error} /></div>;
 
   const field = (key, label, hint) => <Control key={key} spec={specs[key]} value={current(key)} onChange={set(key)} label={label} hint={hint} />;
-  const policy = draft["routes.policy"] || values["routes.policy"] || {};
+  const policy = { ...(values["routes.policy"] || {}), ...(draft["routes.policy"] || {}) };
   const judgeModels = (modelsLoad.data?.models || []).filter((m) => m.enabled && !m.missing);
   const remotes = (modelsLoad.data?.models || []).filter((m) => m.remote);
   const llama = statusLoad.data?.llama_server;

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api, errorText } from "./api.js";
 import { initialLang, makeT, saveLang } from "./i18n.js";
 import { AppContext } from "./context.js";
+import { setRefresher } from "./copilot-context.js";
 import { ConfirmDialog, Icon, ICONS } from "./components/ui.jsx";
 import Panel from "./pages/Panel.jsx";
 import Modelos from "./pages/Modelos.jsx";
@@ -100,6 +101,8 @@ export default function App() {
   }, []);
   // Something changed (a model, a run, a setting): reload the dashboard and every page that listens to `version`.
   const changed = useCallback(() => { setVersion((v) => v + 1); refreshDash(); }, [refreshDash]);
+  // The assistant finished a turn (it may have changed anything): reload lists and details in place, no remount, so open forms keep their text.
+  useEffect(() => setRefresher(changed), [changed]);
 
   // Refresh every 60 s (every 4 s while a run is active) when the tab is visible, and when it becomes visible again.
   const running = !!dash?.running;
