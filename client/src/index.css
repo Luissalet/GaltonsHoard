@@ -109,6 +109,15 @@ textarea.field { resize: vertical; font-family: "Cascadia Mono", Consolas, ui-mo
 .thumb-ph { display: flex; align-items: center; justify-content: center; color: var(--muted); }
 .card-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr)); }
 .scroll-x { overflow-x: auto; }
+.hb-table th, .hb-table td { vertical-align: middle; }
+.hb-cell { padding: 0; min-width: 132px; border: 1px solid var(--line); }
+.hb-empty { text-align: center; color: var(--muted); }
+.hb-pick { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; height: 100%; padding: 7px 10px; background: transparent; border: 0; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.hb-pick:hover { background: #ffffff12; }
+.hb-pick[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: -2px; }
+.hb-main { font-size: 17px; font-weight: 650; line-height: 1.2; }
+.hb-sub { font-size: 11px; color: var(--muted); }
+.hb-tags { display: flex; flex-wrap: wrap; gap: 3px; }
 .trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .modal-backdrop { position: fixed; inset: 0; background: #000a; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px; }

@@ -237,6 +237,16 @@ export default function Ajustes() {
         </div>
       </Section>
 
+      <Section title={t("harness_section")}>
+        <div className="panel space-y-3">
+          <p className="help">{t("harness_help")}</p>
+          {field("harnessbench.allow_external", t("hb_allow_external"), t("hb_allow_external_hint"))}
+          {field("harnessbench.external", t("hb_external_lines"), t("hb_external_lines_hint"))}
+          {field("harnessbench.external_timeout_s", t("hb_external_timeout"))}
+          {saveBar(["harnessbench.allow_external", "harnessbench.external", "harnessbench.external_timeout_s"])}
+        </div>
+      </Section>
+
       <Section title={t("policy_section")}>
         <div className="panel space-y-3">
           <p className="help">{t("policy_help")}</p>
