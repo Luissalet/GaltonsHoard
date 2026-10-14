@@ -40,6 +40,7 @@ class ChatRequest:
     timeout_s: float = 120.0
     context: Optional[int] = None      # Ollama: num_ctx
     reasoning_tokens: int = 0          # tokens for thinking that ``max_tokens`` already includes: the backend must not widen it again
+    tools_fallback: bool = True        # False: a server that refuses ``tools`` is an error of this request, not a reason to describe the tools in the prompt
 
 
 @dataclass
@@ -197,7 +198,7 @@ class OpenAIBackend(_HttpBackend):
                     req = ChatRequest(**{**req.__dict__, "effort": None})
                     notes.append(coded("note_reasoning_retry"))
                     continue
-                if tools and exc.status in (400, 422, 501) and "tool" in exc.body.lower():
+                if tools and req.tools_fallback and exc.status in (400, 422, 501) and "tool" in exc.body.lower():
                     messages, tools = _with_tools_in_prompt(messages, tools), []
                     notes.append(coded("note_tools_in_prompt_server"))
                     continue
@@ -300,7 +301,7 @@ class OllamaBackend(_HttpBackend):
                     req = ChatRequest(**{**req.__dict__, "effort": None})
                     notes.append(coded("note_think_retry"))
                     continue
-                if tools and exc.status in (400, 422, 501) and "tool" in exc.body.lower():
+                if tools and req.tools_fallback and exc.status in (400, 422, 501) and "tool" in exc.body.lower():
                     messages, tools = _with_tools_in_prompt(messages, tools), []
                     notes.append(coded("note_tools_in_prompt_model"))
                     continue

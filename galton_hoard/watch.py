@@ -45,8 +45,10 @@ def failure_of(c: dict[str, Any]) -> Optional[dict[str, Any]]:
 
 class Watch:
     def __init__(self, store: Any, settings: Any, runner: Any, gpus: Any, *, clock: Callable[[], float], submit_run: Callable[[str], Any],
-                 emit: Optional[Callable[[str, dict[str, Any]], None]] = None, client_factory: Optional[Callable[[], httpx.Client]] = None, offline: bool = False):
+                 emit: Optional[Callable[[str, dict[str, Any]], None]] = None, client_factory: Optional[Callable[[], httpx.Client]] = None, offline: bool = False,
+                 other_work: Callable[[], bool] = lambda: False):
         self.store, self.settings, self.runner, self.gpus, self.clock = store, settings, runner, gpus, clock
+        self.other_work = other_work            # True while something else holds the GPU lane (a harness matrix)
         self.submit_run = submit_run
         self.emit = emit or (lambda *_: None)
         self.client_factory = client_factory or (lambda: httpx.Client(trust_env=False, timeout=3.0))
@@ -207,7 +209,7 @@ class Watch:
         if self.in_quiet_hours(now):
             decision["skipped"] = "quiet hours"
             return decision
-        if self.runner.active_run or self.store.runs(states=ACTIVE_RUN_STATES, limit=1):
+        if self.runner.active_run or self.store.runs(states=ACTIVE_RUN_STATES, limit=1) or self.other_work():
             decision["skipped"] = "a run is already queued or running"
             return decision
         reasons = {}

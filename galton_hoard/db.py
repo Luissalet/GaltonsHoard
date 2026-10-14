@@ -241,6 +241,56 @@ MIGRATIONS: list[str] = [
      WHERE judge_pending = 0 AND json_valid(detail) AND json_extract(detail, '$.judge_score') IS NOT NULL
        AND json_extract(detail, '$.reason') LIKE 'the judge could not grade%';
     """,
+    # 8: harness bench: a matrix of models x harnesses x tasks and one row per trial (outcome none = the verifier never ran, not a zero)
+    """
+    CREATE TABLE hb_matrices (
+      id TEXT PRIMARY KEY,
+      label TEXT NOT NULL DEFAULT '',
+      state TEXT NOT NULL DEFAULT 'queued',
+      models TEXT NOT NULL DEFAULT '[]',
+      harnesses TEXT NOT NULL DEFAULT '[]',
+      tasks TEXT NOT NULL DEFAULT '[]',
+      k INTEGER NOT NULL DEFAULT 1,
+      settings TEXT NOT NULL DEFAULT '{}',
+      progress TEXT NOT NULL DEFAULT '{}',
+      total INTEGER NOT NULL DEFAULT 0,
+      done INTEGER NOT NULL DEFAULT 0,
+      source TEXT NOT NULL DEFAULT 'ui',
+      caller TEXT NOT NULL DEFAULT '',
+      error TEXT NOT NULL DEFAULT '',
+      cancel INTEGER NOT NULL DEFAULT 0,
+      summary TEXT NOT NULL DEFAULT '{}',
+      created_ts REAL NOT NULL,
+      started_ts REAL,
+      finished_ts REAL
+    );
+    CREATE TABLE hb_trials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      matrix_id TEXT NOT NULL REFERENCES hb_matrices(id) ON DELETE CASCADE,
+      contestant_id TEXT NOT NULL,
+      digest TEXT NOT NULL DEFAULT '',
+      harness TEXT NOT NULL,
+      task_id TEXT NOT NULL,
+      sample INTEGER NOT NULL DEFAULT 0,
+      outcome TEXT NOT NULL,
+      passed INTEGER,
+      reason TEXT NOT NULL DEFAULT '',
+      detail TEXT NOT NULL DEFAULT '',
+      turns INTEGER,
+      calls INTEGER,
+      format_failures INTEGER,
+      extra_calls INTEGER,
+      extra_repeat INTEGER,
+      extra_after_solved INTEGER,
+      tokens_in INTEGER,
+      tokens_out INTEGER,
+      latency_ms REAL,
+      final TEXT NOT NULL DEFAULT '',
+      trace TEXT NOT NULL DEFAULT '[]',
+      ts REAL NOT NULL
+    );
+    CREATE INDEX hb_trials_matrix ON hb_trials(matrix_id, contestant_id, harness);
+    """,
 ]
 
 

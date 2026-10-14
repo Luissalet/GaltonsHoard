@@ -23,6 +23,8 @@ ROUTES_POLICY_BOUNDS: dict[str, tuple[float, float]] = {
     "min_cases": (1, 10_000), "top_k": (1, 10),
 }
 
+#: the one command-line harness that ships, commented out (a line that starts with # is switched off): see harnessbench/external.py
+EXTERNAL_EXAMPLE = "# example = terminal-agent --base-url {base_url} --model {model} --prompt-file {prompt_file} --workdir {workdir}"
 DEFAULT_GGUF_FOLDER = "D:\\LocalAI\\models"
 DEFAULT_LLAMA_SERVER = "D:\\LocalAI\\llama.cpp\\llama-server.exe"
 
@@ -85,6 +87,9 @@ SPECS: list[Spec] = [
     Spec("watch.quiet_to", "hour", 8, "watch", low=0, high=24),
     Spec("watch.idle_min", "int", 10, "watch", low=0, high=1440),
     Spec("arena.min_votes", "int", 5, "arena", low=1, high=1000),
+    Spec("harnessbench.allow_external", "bool", False, "harness"),
+    Spec("harnessbench.external", "str_list", [EXTERNAL_EXAMPLE], "harness"),
+    Spec("harnessbench.external_timeout_s", "int", 600, "harness", low=10, high=7200),
 ]
 SPEC_BY_KEY = {s.key: s for s in SPECS}
 MASK = "…"

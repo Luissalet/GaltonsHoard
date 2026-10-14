@@ -1,6 +1,6 @@
 """Background work in two lanes, one job at a time each: Galton's job kinds on top of the shared Hoard Link ``LaneScheduler``.
 
-* ``gpu``: runs (``run``, ref = run id) and the judge phase (``judge``). One at a time because a run owns the GPUs it leased.
+* ``gpu``: runs (``run``, ref = run id), harness matrices (``matrix``, ref = matrix id) and the judge phase (``judge``). One at a time because a run owns the GPUs it leased.
 * ``io``: ``refresh`` (rediscover models, every ``watch.interval_h`` hours), ``watch`` (probe shared servers, queue a quick run when it disturbs nobody,
   every minute) and ``housekeeping`` (hourly).
 
@@ -22,7 +22,7 @@ WATCH_S = 60.0
 HOUSEKEEPING_S = 3600.0
 FIRST_REFRESH_S = 5.0
 LANES = ("gpu", "io")
-JOB_LANE = {"run": "gpu", "judge": "gpu", "refresh": "io", "watch": "io", "housekeeping": "io"}
+JOB_LANE = {"run": "gpu", "judge": "gpu", "matrix": "gpu", "refresh": "io", "watch": "io", "housekeeping": "io"}
 AUTO = ("refresh", "watch", "housekeeping")
 
 

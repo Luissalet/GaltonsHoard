@@ -22,6 +22,8 @@ from .discovery import Discovery
 from .errors import GaltonError
 from .fakes import FakeGpus, FakeWorld, demo_seed
 from .gpus import GpuManager
+from .harnessbench.runner import MatrixRunner, normalise_matrix_settings
+from .harnessbench.store import ACTIVE as MATRIX_ACTIVE, MatrixStore
 from .hoard_link import family
 from .hoard_link.docs.sniff import sniff
 from .hoard_link.tokens import read_or_create_token, write_url
@@ -86,12 +88,14 @@ class Services:
         self.runner = Runner(self.store, self.settings, self.gpus, self.launcher, self.backend_factory, images_dir=config.images_dir, clock=clock_fn, sleep=sleep,
                              family_call=self.family_call, emit=self.emit, client_factory=client_factory, meta_reader=meta_reader, digest_fn=digest_fn,
                              base_url=lambda: f"http://127.0.0.1:{config.port}")
+        self.matrix_store = MatrixStore(self.db, clock_fn)
+        self.matrices = MatrixRunner(self.matrix_store, self.runner, self.settings, clock=clock_fn, emit=self.emit, base_url=lambda: f"http://127.0.0.1:{config.port}")
         self.arena = Arena(self.store, self.settings)
         self.routes = Routes(self.store, self.settings, config.routes_path, clock=clock_fn, emit=self.emit)
         self.board = Board(self.store, self.settings, self.routes, clock_fn)
         self.watch = Watch(self.store, self.settings, self.runner, self.gpus, clock=clock_fn, submit_run=self.submit_run, emit=self.emit, client_factory=client_factory,
-                           offline=config.offline or self.fake)
-        self.scheduler = Scheduler({"run": self._job_run, "judge": self._job_judge, "refresh": self._job_refresh, "watch": self._job_watch,
+                           offline=config.offline or self.fake, other_work=self.matrix_busy)
+        self.scheduler = Scheduler({"run": self._job_run, "matrix": self._job_matrix, "judge": self._job_judge, "refresh": self._job_refresh, "watch": self._job_watch,
                                     "housekeeping": self._job_housekeeping}, self.store, clock=clock_fn, enabled=config.scheduler and not self.fake,
                                    paused=lambda: bool(self.settings.get("scheduler.paused")), refresh_every_h=lambda: float(self.settings.get("watch.interval_h")),
                                    watch_enabled=lambda: bool(self.settings.get("watch.enabled")) and not config.offline)
@@ -109,8 +113,10 @@ class Services:
         except Exception:  # noqa: BLE001
             log.exception("could not look for leftover llama-server processes")
         self._abandon_stale_runs()
+        self._abandon_stale_matrices()
         self.scheduler.start()
         self._requeue_queued_runs()
+        self._requeue_queued_matrices()
 
     def _requeue_queued_runs(self) -> None:
         """Runs still ``queued`` lived only in the old process's in-memory queue: put them back on the GPU lane, oldest first.
@@ -119,6 +125,22 @@ class Services:
             return
         for run in sorted(self.store.runs(states=("queued",), limit=200), key=lambda r: r["created_ts"]):
             self.scheduler.submit("run", run["id"], "restart")
+
+    def _requeue_queued_matrices(self) -> None:
+        if not self.scheduler._alive():
+            return
+        for m in sorted(self.matrix_store.matrices(states=("queued",), limit=200), key=lambda r: r["created_ts"]):
+            self.scheduler.submit("matrix", m["id"], "restart")
+
+    def _abandon_stale_matrices(self) -> None:
+        """A matrix that was running when the process died can never finish: its stored trials stay, and it says it was interrupted."""
+        for m in self.matrix_store.matrices(states=("running", "waiting_gpu", "waiting_server"), limit=100):
+            progress = {cid: ({**p, "state": "failed", "error": text("rc_interrupted")} if p.get("state") not in ("done", "failed", "cancelled") else p) for cid, p in m["progress"].items()}
+            failed = self.matrix_store.update_matrix(m["id"], state="failed", finished_ts=self.clock(), error=text("run_stopped"), progress=progress)
+            self.matrices.jobs.finished(failed, "failed", str(text("run_stopped")))
+
+    def matrix_busy(self) -> bool:
+        return self.matrices.active is not None or bool(self.matrix_store.matrices(states=MATRIX_ACTIVE, limit=1))
 
     def stop(self) -> None:
         self.scheduler.stop()
@@ -181,6 +203,35 @@ class Services:
         self.store.add_activity("run", run_id, run["state"] == "done", int((time.monotonic() - t0) * 1000), run["state"])
         self.routes_changed()
         return {"run": run_id, "state": run["state"], "regressions": len(regressions)}
+
+    def submit_matrix(self, matrix_id: str, wait_s: float = 0.0) -> None:
+        """Queue a harness matrix on the GPU lane. Without running lanes (tests) it runs inline."""
+        if not self.scheduler._alive():
+            self.scheduler.run_now("matrix", matrix_id)
+            return
+        job = self.scheduler.submit("matrix", matrix_id, "manual")
+        if job is not None and wait_s > 0:
+            job.done.wait(wait_s)
+
+    def _job_matrix(self, matrix_id: str) -> dict[str, Any]:
+        t0 = time.monotonic()
+        done = self.matrices.execute(matrix_id)
+        self.store.add_activity("matrix", matrix_id, done["state"] == "done", int((time.monotonic() - t0) * 1000), done["state"])
+        return {"matrix": matrix_id, "state": done["state"]}
+
+    def start_matrix(self, *, models: list[Any], harnesses: Optional[list[str]] = None, tasks: Optional[list[str]] = None, kinds: Optional[list[str]] = None, k: int = 1,
+                     settings: Optional[dict[str, Any]] = None, label: str = "", source: str = "ui", caller: str = "", wait_s: float = 0.0) -> dict[str, Any]:
+        rs = normalise_matrix_settings(settings, k)
+        rows = self.runner.resolve_contestants(models)
+        problems = self.preflight(rows, rs)
+        self._refuse_hopeless(rows, problems)
+        matrix = self.matrices.create(models=[c["id"] for c in rows], harnesses=harnesses, tasks=tasks, kinds=kinds, k=k, settings=rs, label=label, source=source, caller=caller)
+        self.submit_matrix(matrix["id"], wait_s)
+        card = self.matrices.card(self.matrix_store.matrix(matrix["id"]))
+        out = {"matrix": card, "warnings": [text("warn_will_fail", name=p["name"], problem=p["problem"]) for p in problems]}
+        if wait_s > 0 and card["state"] in MATRIX_ACTIVE:
+            out["still_running"] = True
+        return out
 
     def _job_judge(self, _ref: str) -> dict[str, Any]:
         out = self.runner.judge_pending()
@@ -481,8 +532,11 @@ class Services:
             raise GaltonError("not_found", "no_model", ref=ref)
         if self.runner.active_run and c["id"] in self.store.run(self.runner.active_run)["contestants"]:
             raise GaltonError("busy", "model_busy_run", name=c["name"])
+        if self.matrices.active and c["id"] in self.matrix_store.matrix(self.matrices.active)["models"]:
+            raise GaltonError("busy", "model_busy_run", name=c["name"])
         results = self.db_count("results", "contestant_id", c["id"])
         self.store.delete_contestant(c["id"])
+        self.matrix_store.delete_for_contestant(c["id"])
         self.db.execute("DELETE FROM results WHERE contestant_id = ?", (c["id"],))
         self.db.execute("DELETE FROM run_contestants WHERE contestant_id = ?", (c["id"],))
         return {"removed": c["name"], "id": c["id"], "results_removed": results,
