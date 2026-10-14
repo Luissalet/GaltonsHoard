@@ -612,6 +612,41 @@ def test_rulebench_tools_list_prompt_and_score(svc):
     assert off.value.key == "rulebench_code_off"
 
 
+def test_harness_bench_tools_start_follow_and_explain_a_matrix(svc):
+    from galton_hoard.fakes import agent_responder
+    native = add_gguf(svc, "nativo", responder=agent_responder(speaks=("native",)))
+    writer = add_gguf(svc, "escritor", responder=agent_responder(speaks=("xml", "native")))
+    catalog = call(svc, "harness_catalog")
+    assert [h["id"] for h in catalog["harnesses"]] == ["native_tools", "json_text", "xml_text", "react_text"] and len(catalog["tasks"]) >= 20 and not catalog["external"]["allowed"]
+    plan = call(svc, "harness_matrix_start", models=["nativo", "escritor"], harnesses=["native_tools", "xml_text"], kinds=["calc"], dry_run=True)
+    assert plan["trials"] == 2 * 2 * len(plan_tasks(catalog, "calc")) and call(svc, "harness_matrix_list")["count"] == 0
+    started = call(svc, "harness_matrix_start", models=["nativo", "escritor"], harnesses=["native_tools", "xml_text"], kinds=["calc", "notool"], label="t")
+    mid = started["matrix"]["id"]
+    status = call(svc, "harness_matrix_status", matrix=mid)
+    assert status["matrix"]["state"] == "done" and status["matrix"]["done"] == status["matrix"]["total"] and status["summary"]["trials"] == status["matrix"]["total"]
+    result = call(svc, "harness_matrix_result", matrix=mid)
+    assert result["cells"][native["id"]]["native_tools"]["pass_at_1"] == 1.0 and result["cells"][native["id"]]["xml_text"]["format_fail_rate"] > 0
+    assert result["conclusion"]["summary"]["en"] and "| nativo |" in result["markdown"]
+    assert call(svc, "harness_matrix_result")["matrix"]["id"] == mid, "the latest matrix is the default"
+    cell = call(svc, "harness_cell", matrix=mid, model="nativo", harness="xml_text")
+    assert cell["stats"]["format_fail_rate"] > 0
+    one = call(svc, "harness_cell", matrix=mid, model="nativo", harness="xml_text", task=cell["tasks"][0]["task"])
+    assert one["trials"][0]["trace"]
+    assert call(svc, "harness_matrix_list")["matrices"][0]["id"] == mid
+    finished = call(svc, "harness_matrix_cancel", matrix=mid)
+    assert finished["state"] == "done" and finished["cancelled"] is False, "a finished matrix has nothing to cancel"
+    queued = svc.matrices.create(models=[native["id"]], kinds=["calc"], settings=None)
+    assert call(svc, "harness_matrix_cancel", matrix=queued["id"])["state"] == "cancelled"
+    with pytest.raises(GaltonError) as missing:
+        call(svc, "harness_matrix_status", matrix="nope")
+    assert missing.value.key == "hb_no_matrix"
+    assert writer["id"] != native["id"]
+
+
+def plan_tasks(catalog, kind):
+    return [t for t in catalog["tasks"] if t["kind"] == kind]
+
+
 def test_every_tool_was_called():
     missing = sorted(set(TOOLS_BY_NAME) - CALLED)
     assert not missing, f"tools never called in this module: {missing}"

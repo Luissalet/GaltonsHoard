@@ -44,6 +44,7 @@ Run Python from the repository root or with absolute paths.
 | The IFMTBench suite (download, checksums, sample, scoring) | `ifmtbench.py`, `checkers/ifmt.py`, `docs/IFMTBENCH.md`, `tests/test_ifmt.py` (fixtures in `tests/ifmt_data.py`; the pinned checksums are real, tests patch `ifmtbench.PINS`) |
 | A number in the ranking looks wrong | `stats.py`, `board.py`, `store.scoring_rows` |
 | The routing table | `routes.py`, the setting `routes.policy`, `watch.py` for regressions |
+| The harness bench (a cell is wrong, a task fails for the wrong reason, None versus zero, the conclusion) | `harnessbench/` (`harnesses.py` parsing, `loop.py` one trial, `scoring.py`, `runner.py`), `docs/HARNESSBENCH.md`, `tests/test_harnessbench.py`; the scripted fake agents are `fakes.agent_responder` |
 | A tool or its arguments | `agent_tools.py`, `docs/API.md` (a tool that waits for a run or the judge sets `timeout_s=BRIDGE_WAIT_S`) |
 | Start-up, the bridge, the error envelope, the token | `__main__.py` and `main.py` (wiring only), `api/agent.py`, `mcp_server.py`, `tests/test_shared_commons.py` |
 | The UI | `client/src/pages/*.jsx`, `client/src/components/*`, `client/src/i18n.js` |

@@ -85,6 +85,81 @@ def reference_responder(references: dict[str, str], *, accuracy: float = 1.0, se
     return respond
 
 
+# ------------------------------------------------------------------------------------------------- agents for the harness bench
+def harness_task(req: ChatRequest) -> Optional[dict[str, Any]]:
+    """The harness-bench task a request belongs to (its first user message is the task prompt), or ``None``."""
+    from .harnessbench.tasks import TASKS
+    first = next((str(m.get("content", "")) for m in req.messages if m.get("role") == "user"), "")
+    return next((t for t in TASKS if t["prompt"] == first), None)
+
+
+def harness_dialect(req: ChatRequest) -> str:
+    """Which way of calling tools the harness behind a request asks for: native, xml, react or json."""
+    system = next((str(m.get("content", "")) for m in req.messages if m.get("role") == "system"), "")
+    if req.tools:
+        return "native"
+    if "<tool_call>" in system:
+        return "xml"
+    if "Action Input" in system:
+        return "react"
+    return "json"
+
+
+def _speak(dialect: str, name: str, args: dict[str, Any]) -> Reply:
+    import json
+    if dialect == "native":
+        return {"text": "", "tool_calls": [{"name": name, "arguments": args}]}
+    if dialect == "xml":
+        return "<tool_call>\n" + json.dumps({"name": name, "arguments": args}) + "\n</tool_call>"
+    if dialect == "react":
+        return f"Thought: I need a tool.\nAction: {name}\nAction Input: {json.dumps(args)}"
+    return json.dumps({"tool": name, "args": args})
+
+
+def _fumble(dialect: str, name: str, args: dict[str, Any]) -> Reply:
+    """The same intention written in a way the harness of that dialect cannot read."""
+    import json
+    if dialect == "json":
+        return json.dumps({"name": name, "arguments": args})                      # the keys of another convention
+    if dialect == "xml":
+        return f"<tool_call>{name}(" + ", ".join(f"{k}={v!r}" for k, v in args.items()) + ")</tool_call>"
+    if dialect == "react":
+        return f"Thought: I need a tool.\nAction: {name}\nAction Input: " + ", ".join(f"{k}={v!r}" for k, v in args.items())
+    return {"text": "<tool_call>" + json.dumps({"name": name, "arguments": args}) + "</tool_call>"}     # native: the call written as text
+
+
+def _finish(dialect: str, answer: str) -> Reply:
+    return f"Thought: I now know the final answer\nFinal Answer: {answer}" if dialect == "react" else answer
+
+
+def agent_responder(*, speaks: tuple[str, ...] = ("native", "json", "xml", "react"), accuracy: float = 1.0, seed: int = 0, extra_calls: int = 0,
+                    wrong: str = "I could not find it.") -> Responder:
+    """A scripted agent for the harness bench. It follows the task's oracle path, speaking the dialects in ``speaks`` correctly and fumbling the
+    others (the harness then reports a format failure). ``accuracy`` below 1 makes it give a wrong final answer on a fixed share of tasks;
+    ``extra_calls`` makes it repeat the last tool call that many times before answering (a task that needs no tool gets one calculator call)."""
+    def respond(req: ChatRequest) -> Reply:
+        task = harness_task(req)
+        dialect = harness_dialect(req)
+        if task is None:
+            return ""
+        steps = [(n, a) for n, a in task["oracle"]]
+        extra = [steps[-1] if steps else ("calculator", {"expression": "1 + 1"})] * extra_calls
+        script = steps + extra
+        done = sum(1 for m in req.messages if m.get("role") == "assistant") if dialect in speaks else 0      # what it fumbles, it fumbles again
+        if done < len(script):
+            name, args = script[done]
+            return _speak(dialect, name, args) if dialect in speaks else _fumble(dialect, name, args)
+        if accuracy < 1.0 and random.Random(f"{seed}:{task['id']}:{dialect}").random() > accuracy:
+            return _finish(dialect, wrong)
+        return _finish(dialect, task["final"])
+    return respond
+
+
+def with_agent(base: Responder, agent: Responder) -> Responder:
+    """Answer harness-bench requests with ``agent`` and everything else with ``base``."""
+    return lambda req: agent(req) if harness_task(req) is not None else base(req)
+
+
 @dataclass
 class FakeWorld:
     """Responders by model name, a launcher and a backend factory that agree with each other."""
@@ -186,6 +261,10 @@ DEMO_MODELS = [
 ]
 
 
+#: the tool-calling conventions each invented model writes correctly (the harness bench shows what happens under the others)
+DEMO_DIALECTS = {"demo-grande-27b-q4": ("native", "json", "xml", "react"), "demo-medio-8b-q5": ("native", "xml", "react"), "demo-pequeno-3b-q8": ("json", "react")}
+
+
 def demo_seed(services: Any) -> dict[str, Any]:
     """Create three fake GGUF contestants and wire the fake world to answer with the reference answers at different accuracies."""
     from .suites import load_definitions
@@ -197,7 +276,8 @@ def demo_seed(services: Any) -> dict[str, Any]:
                 refs[text[:200]] = case["reference"]
     world: FakeWorld = services.fake_world
     for i, (name, params, quant, accuracy, tps, vision, size) in enumerate(DEMO_MODELS):
-        world.register(name, reference_responder(refs, accuracy=accuracy, seed=i), tps=tps)
+        world.register(name, with_agent(reference_responder(refs, accuracy=accuracy, seed=i),
+                                        agent_responder(speaks=DEMO_DIALECTS[name], accuracy=min(1.0, accuracy + 0.08), seed=i)), tps=tps)
         key = f"gguf:/demo/{name}.gguf"
         if services.store.contestant_by_key(key) is None:
             services.store.create_contestant(key=key, kind="gguf", name=name, path=f"/demo/{name}.gguf", provider="llamacpp", aliases=[name, f"{name}.gguf"], family="demo",

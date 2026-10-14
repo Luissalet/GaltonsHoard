@@ -717,6 +717,101 @@ Annotations: idempotentHint.
 | `variant` (string) | no | Label stored with the sample. |
 | `pressure` (string) | no | Label stored with the sample. |
 
+## `harness_catalog`
+
+Harnesses, variants, tasks and tools of the harness bench. Catálogo de arneses y tareas.
+
+Four base harnesses (native_tools, json_text, xml_text, react_text), the .long and .trim variants, command-line harnesses (off by default) and the 24 tasks with their kinds.
+Sinónimos: arnés, bucle de agente, tareas con herramientas, function calling, ReAct, XML, JSON
+
+Annotations: readOnlyHint, idempotentHint.
+
+## `harness_matrix_start`
+
+Run a model x harness x task matrix: model or harness at fault. Lanzar matriz de arneses.
+
+Same model under each harness, same token cap and turn limit in every cell. Reports pass@1, format failures apart from wrong answers, needless tool calls, turns, tokens; a trial whose verifier never ran is None, not 0. Queued on the GPU lane; use wait_s to wait, dry_run to count the trials only.
+Sinónimos: medir arneses, mismo modelo distinto arnés, fallo de formato, function calling nativo, ReAct, evaluar agente
+
+Annotations: openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `models` (array) | yes | Model ids or names, or specs {kind: 'server', url, model} / {kind: 'ollama', model} / {kind: 'gguf', path}. |
+| `harnesses` (array) | no | Harness ids: native_tools, json_text, xml_text, react_text, each with optional .long (long system prompt) and/or .trim (older observations replaced by a note), or cli:<name> for a configured command-line harness. Empty: the four base harnesses. |
+| `tasks` (array) | no | Task ids (see harness_catalog). Empty: all 24, or those of `kinds`. |
+| `kinds` (array) | no | Only tasks of these kinds: calc, convert, docs, files, chain, notool, recovery. |
+| `k` (integer) | no | Samples per task and cell. With k above 1 the temperature defaults to 0.7 and pass@k and pass^k are reported. |
+| `settings` (object) | no | The same for every cell: max_tokens (per reply, default 1024), max_turns (default 8), max_format_errors (default 3), plus the run settings temperature, top_p, max_tokens, effort, seed, context, timeout_s, wait_s, device, load_local. |
+| `label` (string) | no |  |
+| `wait_s` (number) | no | Wait this long for the matrix to finish before answering (0: return at once with its id). |
+| `dry_run` (boolean) | no | Only count the trials and show the settings every cell will share; start nothing. |
+
+## `harness_matrix_status`
+
+Progress of a harness matrix: per model state, trials done, errors. Estado de la matriz.
+
+Sinónimos: cómo va la matriz de arneses, progreso
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `matrix` (string) | no | Matrix id (m_…). Empty: the running one, else the latest. |
+
+## `harness_matrix_result`
+
+Harness matrix as a table with a short conclusion: harness vs model. Resultado de la matriz de arneses.
+
+Per cell: pass@1 with interval, format failure rate, wrong-answer rate, extra tool calls, turns, tokens, None count. Conclusion: whether the difference between harnesses is larger or smaller than between models, and the best harness per model.
+Sinónimos: tabla modelo por arnés, mapa de calor, mejor arnés por modelo, qué falla, el modelo o el arnés
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `matrix` (string) | no | Matrix id (m_…). Empty: the running one, else the latest. |
+
+## `harness_cell`
+
+One matrix cell: its tasks and, for one task, the traces and the reason of each failure. Detalle de una celda.
+
+Every turn with the tool calls, results, refused calls and format errors.
+Sinónimos: trazas, por qué falló el formato, llamadas sobrantes, depurar un arnés
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `matrix` (string) | no | Matrix id. Empty: the running one, else the latest. |
+| `model` (string) | yes | Model name or id as shown in the matrix. |
+| `harness` (string) | yes | Harness id of the column, for example json_text.long. |
+| `task` (string) | no | A task id: adds the full traces (every turn, call, result and format failure) of its trials. |
+
+## `harness_matrix_cancel`
+
+Cancel a harness matrix: results kept, shared servers untouched. Cancelar matriz de arneses.
+
+Sinónimos: parar matriz, detener
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `matrix` (string) | no | Matrix id (m_…). Empty: the running one, else the latest. |
+
+## `harness_matrix_list`
+
+Recent harness matrices with state and conclusion. Historial de matrices de arneses.
+
+Sinónimos: matrices anteriores, mediciones de arneses
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `limit` (integer) | no |  |
+
 ## REST routes for the UI
 
 - `GET /api/health`, `GET /api/status`
