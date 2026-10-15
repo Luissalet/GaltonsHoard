@@ -19,7 +19,7 @@
                       ├──► routes.py: policy ─► routes.json (atomic) ─► event galton.routes.updated
                       ├──► watch.py: new/changed models ─► quick run; regression check after each run ─► notice + galton.regression
                       └──► arena.py: blind pairs from stored answers, votes, ratings
- agent_tools.py: one catalogue (56 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
+ agent_tools.py: one catalogue (65 tools) ──► api/agent.py (shared agent router, Bearer token) · api/ui.py (local) · mcp_server.py (shared stdio bridge)
  scheduler.py (hoard_link.lanes): lane "gpu" (runs, judging) · lane "io" (refresh every watch.interval_h, watch every minute, housekeeping hourly)
 ```
 
@@ -58,6 +58,7 @@
 | `galton_hoard/agent_tools.py` | The tool catalogue: name, description, pydantic arguments, annotations, handler (the `Tool` type, the result cap and `call_tool` come from `hoard_link.agentkit`) |
 | `galton_hoard/api/` | REST: `agent.py` (the shared agent router; it also reads the `caller` of a call), `ui.py`, `runs.py` (events of a run), `health.py` (`/api/status`; `/api/health` is the shared route) |
 | `galton_hoard/harnessbench/` | Model x harness x task matrix: `harnesses.py` (four adapters, variants), `world.py` (tools and in-memory world), `tasks.py` (24 tasks with verifiers and oracle paths), `loop.py` (one trial), `scoring.py` (cells, margins, conclusion), `external.py` (command-line harnesses), `store.py` (tables `hb_*`), `runner.py` (`MatrixRunner`: a matrix as a job on the GPU lane). See docs/HARNESSBENCH.md |
+| `galton_hoard/agentbench/` | Real harnesses on published benchmarks through a container trial runner: `spec.py` (harness lines, benchmark catalogue, deterministic subsets with dev/test split), `harbor.py` (job command line, reading `result.json` into trial rows, outcome `none` apart), `scoring.py` (cells, ranking, paired sign test), `campaign.py` (jobs with a fixed number of trials in flight, retries of `none`, resumable from the job folders), `store.py` (`ab_campaigns`, `ab_trials`), `service.py` (background threads, views for the tools) |
 | `galton_hoard/fakes.py` | Fake GPUs, leases, launcher and models for the tests and the demo mode |
 | `galton_hoard/hoard_link/` | Vendored family library (event bus, leases, calls to other apps). Not edited here |
 | `mcp_server.py` | The shared stdio bridge (`hoard_link.bridge.CatalogBridge`, default timeout 660 s): proxies to the running app, refreshes the tool list, starts the app when needed |
@@ -128,3 +129,7 @@ Everything lives in `data/` (or `GALTON_DATA_DIR`): `galton.db`, `images/`, `cac
 ## Harness bench
 
 `galton_hoard/harnessbench/` adds a third kind of long job next to runs and the judge. `Services.start_matrix` stores a row in `hb_matrices` (state, models, harness ids, task ids, k, shared settings, per-model progress, summary) and queues a `matrix` job on the `gpu` lane, so it waits behind runs and takes GPU leases through the same `Runner.session` (shared servers are probed and waited for, the identity guard holds results, a server that changed its model turns the rest into `None`). `MatrixRunner.execute` goes model by model and, inside a session, over harness x task x sample; every trial is stored at once in `hb_trials` (outcome `pass`, `fail_answer`, `fail_format` or `none`, counters, tokens, trace), which is why progress survives and a cancel keeps what was measured. The chat closure sets `ChatRequest.tools_fallback = False`: a server that refuses `tools` must show up as a format failure of `native_tools`, not be papered over by describing the tools in the prompt. `Watch` does not start a measurement while `matrix_busy()`. At start-up a matrix left `running` is marked failed with its trials kept, and one left `queued` is queued again. Cells, margins and the conclusion are computed from the stored trials at request time (`scoring.py`), never stored, so they follow any change of the rules; the matrix keeps a summary when it ends. Removing a model deletes its trials. A trial whose verifier never ran is `none` and is left out of every denominator (`docs/HARNESSBENCH.md`). `fakes.agent_responder` builds the scripted agents of the tests and of the demo mode: it follows each task's oracle path speaking only the dialects it is given.
+
+## Agent bench
+
+`galton_hoard/agentbench/` runs whole agent programs, not adapters: a campaign is benchmarks x harnesses x k, each cell one job of the container trial runner, and the job folders are the state. `Services.agentbench` keeps one thread per running campaign outside the GPU lane (the model is served elsewhere), copies finished trials into `ab_trials` as they land and starts again, on the next start, any campaign left running. Migration 9 adds the two tables. See docs/AGENTBENCH.md.

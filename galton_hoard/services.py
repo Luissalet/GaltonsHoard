@@ -24,6 +24,8 @@ from .fakes import FakeGpus, FakeWorld, demo_seed
 from .gpus import GpuManager
 from .harnessbench.runner import MatrixRunner, normalise_matrix_settings
 from .harnessbench.store import ACTIVE as MATRIX_ACTIVE, MatrixStore
+from .agentbench.service import AgentBench
+from .agentbench.store import AgentBenchStore
 from .hoard_link import family
 from .hoard_link.docs.sniff import sniff
 from .hoard_link.tokens import read_or_create_token, write_url
@@ -90,6 +92,7 @@ class Services:
                              base_url=lambda: f"http://127.0.0.1:{config.port}")
         self.matrix_store = MatrixStore(self.db, clock_fn)
         self.matrices = MatrixRunner(self.matrix_store, self.runner, self.settings, clock=clock_fn, emit=self.emit, base_url=lambda: f"http://127.0.0.1:{config.port}")
+        self.agentbench = AgentBench(AgentBenchStore(self.db, clock_fn), self.settings, data_dir=config.data_dir, emit=self.emit, clock=clock_fn)
         self.arena = Arena(self.store, self.settings)
         self.routes = Routes(self.store, self.settings, config.routes_path, clock=clock_fn, emit=self.emit)
         self.board = Board(self.store, self.settings, self.routes, clock_fn)
@@ -117,6 +120,8 @@ class Services:
         self.scheduler.start()
         self._requeue_queued_runs()
         self._requeue_queued_matrices()
+        if not (self.fake or self.config.offline):
+            self.agentbench.resume_all()
 
     def _requeue_queued_runs(self) -> None:
         """Runs still ``queued`` lived only in the old process's in-memory queue: put them back on the GPU lane, oldest first.

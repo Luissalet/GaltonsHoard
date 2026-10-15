@@ -877,6 +877,44 @@ class HarnessCellArgs(BaseModel):
     task: str = Field("", max_length=80, description="A task id: adds the full traces (every turn, call, result and format failure) of its trials.")
 
 
+class AgentBenchStartArgs(BaseModel):
+    benchmarks: list[str] = Field(default_factory=list, max_length=10, description="Benchmark ids from agentbench_catalog (tb2, swev, polyglot, tau3, lcb). Empty: all.")
+    harnesses: list[str] = Field(default_factory=list, max_length=30, description="Harness names from the setting agentbench.harnesses. Empty: every line that is switched on.")
+    model: str = Field("", max_length=200, description="Model id the server knows. Empty: the setting agentbench.model.")
+    base_url: str = Field("", max_length=300, description="Address of the server that serves it (common chat-completions protocol, ending in /v1). Empty: the setting agentbench.base_url.")
+    k: int = Field(1, ge=1, le=10, description="Attempts per task and harness.")
+    splits: list[Literal["dev", "test"]] = Field(default_factory=lambda: ["dev", "test"], description="dev: the tasks a harness may be tuned on; test: only measured.")
+    label: str = Field("", max_length=120)
+    slots: int = Field(0, ge=0, le=64, description="Trials in flight at once (0: the setting).")
+    adopt: str = Field("", max_length=80, description="Name of a campaign whose jobs another process runs: only read its job folders, launch nothing.")
+    dry_run: bool = Field(False, description="Only show the task subsets of each benchmark; start nothing.")
+
+
+class AgentBenchRef(BaseModel):
+    campaign: str = Field("", max_length=80, description="Campaign id or name. Empty: the running one, else the latest.")
+
+
+class AgentBenchResultArgs(BaseModel):
+    campaign: str = Field("", max_length=80, description="Campaign id or name. Empty: the running one, else the latest.")
+    split: Literal["", "dev", "test"] = Field("", description="Only the trials of that split (empty: all).")
+    focus: str = Field("faustus", max_length=40, description="Harness compared, task by task, against every other one.")
+
+
+class AgentBenchCellArgs(BaseModel):
+    campaign: str = Field("", max_length=80)
+    benchmark: str = Field(..., min_length=1, max_length=40)
+    harness: str = Field(..., min_length=1, max_length=40)
+
+
+class AgentBenchTrialArgs(BaseModel):
+    trial: int = Field(..., ge=1, description="Trial id from agentbench_cell.")
+    limit: int = Field(20_000, ge=500, le=200_000, description="Characters kept from the end of each log file.")
+
+
+class AgentBenchListArgs(BaseModel):
+    limit: int = Field(15, ge=1, le=100)
+
+
 def _rulebench_task(task_id: str) -> dict[str, Any]:
     from .rulebench import TASKS as RB_TASKS
     task = next((t for t in RB_TASKS if t["id"] == task_id), None)
@@ -952,6 +990,58 @@ def run_harness_matrix_cancel(svc: Services, a: HarnessMatrixRef) -> dict[str, A
 def run_harness_matrix_list(svc: Services, a: HarnessMatrixListArgs) -> dict[str, Any]:
     rows = svc.matrix_store.matrices(limit=a.limit)
     return cap_result({"matrices": [svc.matrices.card(m) | ({"summary": m["summary"]} if m["summary"] else {}) for m in rows], "count": len(rows)})
+
+
+# ------------------------------------------------------------------ agent bench
+def _campaign(svc: Services, ref: str) -> dict[str, Any]:
+    if ref:
+        return svc.agentbench.store.campaign(ref)
+    latest = svc.agentbench.store.latest()
+    if latest is None:
+        raise GaltonError("not_found", "ab_no_campaigns")
+    return latest
+
+
+def run_agentbench_catalog(svc: Services, _: Empty) -> dict[str, Any]:
+    return cap_result(svc.agentbench.catalog())
+
+
+def run_agentbench_start(svc: Services, a: AgentBenchStartArgs) -> dict[str, Any]:
+    if a.dry_run:
+        return cap_result({"subsets": svc.agentbench.plan(a.benchmarks)})
+    return cap_result(svc.agentbench.start(benchmarks=a.benchmarks, harnesses=a.harnesses, model=a.model, base_url=a.base_url, k=a.k, splits=list(a.splits),
+                                           label=a.label, name=a.adopt, launch=not a.adopt, slots=a.slots or None,
+                                           source="ui" if _from_ui() else "assistant", caller=_CALLER.get()))
+
+
+def run_agentbench_status(svc: Services, a: AgentBenchRef) -> dict[str, Any]:
+    return cap_result({"campaign": svc.agentbench.card(_campaign(svc, a.campaign))})
+
+
+def run_agentbench_result(svc: Services, a: AgentBenchResultArgs) -> dict[str, Any]:
+    return cap_result(svc.agentbench.result(_campaign(svc, a.campaign)["id"], split=a.split, focus=a.focus))
+
+
+def run_agentbench_cell(svc: Services, a: AgentBenchCellArgs) -> dict[str, Any]:
+    return cap_result(svc.agentbench.cell(_campaign(svc, a.campaign)["id"], a.benchmark, a.harness))
+
+
+def run_agentbench_trial(svc: Services, a: AgentBenchTrialArgs) -> dict[str, Any]:
+    return cap_result(svc.agentbench.trial(a.trial, limit=a.limit))
+
+
+def run_agentbench_cancel(svc: Services, a: AgentBenchRef) -> dict[str, Any]:
+    return svc.agentbench.cancel(_campaign(svc, a.campaign)["id"])
+
+
+def run_agentbench_sync(svc: Services, a: AgentBenchRef) -> dict[str, Any]:
+    row = _campaign(svc, a.campaign)
+    return {"campaign": row["id"], "trials_read": svc.agentbench.sync(row["id"])}
+
+
+def run_agentbench_list(svc: Services, a: AgentBenchListArgs) -> dict[str, Any]:
+    rows = svc.agentbench.campaigns(limit=a.limit)
+    return cap_result({"campaigns": rows, "count": len(rows)})
 
 
 # ================================================================================ catalogue
@@ -1107,6 +1197,31 @@ TOOLS: list[Tool] = [
          HarnessMatrixRef, ann(False, idempotent=True), run_harness_matrix_cancel),
     Tool("harness_matrix_list", _d("Recent harness matrices with state and conclusion. Historial de matrices de arneses.", synonyms="matrices anteriores, mediciones de arneses"),
          HarnessMatrixListArgs, ann(True), run_harness_matrix_list),
+    Tool("agentbench_catalog", _d("Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.",
+                                  "Published agentic benchmarks (terminal work, repository fixes, multi-language edits, dialogues with tools, algorithmic problems), the fixed "
+                                  "subset Galton uses of each with its dev and test split, and the harness lines of the setting agentbench.harnesses.",
+                                  "benchmarks de agentes, arneses reales, terminal, swe, polyglot, tau, livecodebench"), Empty, ann(True), run_agentbench_catalog),
+    Tool("agentbench_start", _d("Run real agent harnesses on published benchmarks with one model. Lanzar campaña de agentes.",
+                                "Each task runs in its own container: the harness is installed, works on the task, then the task's hidden tests decide. Same tasks, same model, "
+                                "same limits for every harness. Trials whose verifier never ran are None, not 0, and are retried. Runs in the background; dry_run shows the subsets.",
+                                "comparar arneses, qué agente es mejor con este modelo, campaña, benchmark de agentes"),
+         AgentBenchStartArgs, ann(False, idempotent=False, open_world=True), run_agentbench_start),
+    Tool("agentbench_status", _d("Progress of an agent-bench campaign. Estado de la campaña de agentes.", synonyms="cómo va la campaña, progreso del banco de agentes"),
+         AgentBenchRef, ann(True), run_agentbench_status),
+    Tool("agentbench_result", _d("Agent-bench board: pass rate per benchmark and harness, with ranking. Resultado de la campaña.",
+                                 "Per cell: verified trials, pass rate with its 95 % interval, None trials apart, failure reasons, tokens, time. Per benchmark: ranking, the focus "
+                                 "harness's paired wins and losses against each other harness with an exact sign test.",
+                                 "clasificación de arneses, quién gana, mapa de calor, comparación por tarea"), AgentBenchResultArgs, ann(True), run_agentbench_result),
+    Tool("agentbench_cell", _d("One cell of a campaign: every trial of a harness on a benchmark. Detalle de una celda.", synonyms="qué tareas falló, por qué falló"),
+         AgentBenchCellArgs, ann(True), run_agentbench_cell),
+    Tool("agentbench_trial", _d("One trial with the logs the harness and the verifier left. Detalle de una prueba con sus registros.",
+                                synonyms="log del agente, salida de los tests, depurar arnés"), AgentBenchTrialArgs, ann(True), run_agentbench_trial),
+    Tool("agentbench_sync", _d("Read a campaign's job folders again into the database. Releer las carpetas de la campaña.", synonyms="actualizar resultados"),
+         AgentBenchRef, ann(False, idempotent=True), run_agentbench_sync),
+    Tool("agentbench_cancel", _d("Cancel an agent-bench campaign: trials already finished are kept. Cancelar campaña de agentes.", synonyms="parar campaña"),
+         AgentBenchRef, ann(False, idempotent=True), run_agentbench_cancel),
+    Tool("agentbench_list", _d("Recent agent-bench campaigns. Historial de campañas de agentes.", synonyms="campañas anteriores"),
+         AgentBenchListArgs, ann(True), run_agentbench_list),
 ]
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 assert len(TOOLS_BY_NAME) == len(TOOLS)

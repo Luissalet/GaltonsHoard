@@ -247,6 +247,24 @@ export default function Ajustes() {
         </div>
       </Section>
 
+      <Section title={t("agentbench_section")}>
+        <div className="panel space-y-3">
+          <p className="help">{t("agentbench_help")}</p>
+          {field("agentbench.harnesses", t("ab_harness_lines"))}
+          {field("agentbench.model", t("ab_set_model"))}
+          {field("agentbench.base_url", t("ab_set_base_url"))}
+          {field("agentbench.runner", t("ab_set_runner"), t("ab_set_runner_hint"))}
+          {field("agentbench.jobs_dir", t("ab_set_jobs"), t("ab_set_dir_hint"))}
+          {field("agentbench.datasets_dir", t("ab_set_datasets"), t("ab_set_dir_hint"))}
+          {field("agentbench.slots", t("ab_slots"), t("ab_slots_hint"))}
+          {field("agentbench.per_cell", t("ab_set_per_cell"))}
+          {field("agentbench.retries", t("ab_set_retries"))}
+          {field("agentbench.time_scale", t("ab_set_time_scale"), t("ab_set_time_scale_hint"))}
+          {saveBar(["agentbench.harnesses", "agentbench.model", "agentbench.base_url", "agentbench.runner", "agentbench.jobs_dir", "agentbench.datasets_dir",
+                    "agentbench.slots", "agentbench.per_cell", "agentbench.retries", "agentbench.time_scale"])}
+        </div>
+      </Section>
+
       <Section title={t("policy_section")}>
         <div className="panel space-y-3">
           <p className="help">{t("policy_help")}</p>

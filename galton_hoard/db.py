@@ -291,6 +291,63 @@ MIGRATIONS: list[str] = [
     );
     CREATE INDEX hb_trials_matrix ON hb_trials(matrix_id, contestant_id, harness);
     """,
+    # 9: agent bench: real agent harnesses on published benchmarks; one row per container trial (outcome none = the verifier never ran)
+    """
+    CREATE TABLE ab_campaigns (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL DEFAULT '',
+      label TEXT NOT NULL DEFAULT '',
+      state TEXT NOT NULL DEFAULT 'queued',
+      benchmarks TEXT NOT NULL DEFAULT '[]',
+      harnesses TEXT NOT NULL DEFAULT '[]',
+      harness_lines TEXT NOT NULL DEFAULT '[]',
+      model TEXT NOT NULL DEFAULT '',
+      base_url TEXT NOT NULL DEFAULT '',
+      k INTEGER NOT NULL DEFAULT 1,
+      splits TEXT NOT NULL DEFAULT '["dev", "test"]',
+      slots INTEGER NOT NULL DEFAULT 8,
+      per_cell INTEGER NOT NULL DEFAULT 1,
+      retries INTEGER NOT NULL DEFAULT 2,
+      launch INTEGER NOT NULL DEFAULT 1,
+      source TEXT NOT NULL DEFAULT 'ui',
+      caller TEXT NOT NULL DEFAULT '',
+      error TEXT NOT NULL DEFAULT '',
+      cancel INTEGER NOT NULL DEFAULT 0,
+      summary TEXT NOT NULL DEFAULT '{}',
+      created_ts REAL NOT NULL,
+      started_ts REAL,
+      finished_ts REAL
+    );
+    CREATE TABLE ab_trials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id TEXT NOT NULL REFERENCES ab_campaigns(id) ON DELETE CASCADE,
+      benchmark TEXT NOT NULL,
+      harness TEXT NOT NULL,
+      task TEXT NOT NULL,
+      split TEXT NOT NULL DEFAULT '',
+      job TEXT NOT NULL DEFAULT '',
+      trial_name TEXT NOT NULL,
+      outcome TEXT NOT NULL,
+      passed INTEGER,
+      reward REAL,
+      reason TEXT NOT NULL DEFAULT '',
+      error_type TEXT NOT NULL DEFAULT '',
+      error TEXT NOT NULL DEFAULT '',
+      tokens_in INTEGER,
+      tokens_out INTEGER,
+      tokens_cache INTEGER,
+      agent_s REAL,
+      setup_s REAL,
+      total_s REAL,
+      agent_version TEXT NOT NULL DEFAULT '',
+      trial_dir TEXT NOT NULL DEFAULT '',
+      started_at TEXT NOT NULL DEFAULT '',
+      finished_at TEXT NOT NULL DEFAULT '',
+      ts REAL NOT NULL,
+      UNIQUE(campaign_id, trial_name)
+    );
+    CREATE INDEX ab_trials_cell ON ab_trials(campaign_id, benchmark, harness);
+    """,
 ]
 
 

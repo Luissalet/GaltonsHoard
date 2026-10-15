@@ -647,6 +647,42 @@ def plan_tasks(catalog, kind):
     return [t for t in catalog["tasks"] if t["kind"] == kind]
 
 
+def test_agent_bench_tools_plan_start_follow_and_read_a_campaign(svc, tmp_path):
+    from pathlib import Path
+    from galton_hoard.agentbench.campaign import dataset_folder
+    from galton_hoard.agentbench.spec import benchmark
+    fake = str(Path(__file__).with_name("fake_runner.py"))
+    folder = dataset_folder(tmp_path / "ds", benchmark("lcb"))
+    for name in ("a-pass", "b-fail", "c-flaky"):
+        (folder / name).mkdir(parents=True)
+        (folder / name / "instruction.md").write_text("solve it", encoding="utf-8")
+    svc.settings.set_many({"agentbench.harnesses": ["one = agent-one", "two = bad"], "agentbench.runner": fake, "agentbench.jobs_dir": str(tmp_path / "jobs"),
+                           "agentbench.datasets_dir": str(tmp_path / "ds"), "agentbench.model": "m", "agentbench.base_url": "http://h:1/v1"})
+    assert [h["name"] for h in call(svc, "agentbench_catalog")["harnesses"]] == ["one", "two"]
+    assert call(svc, "agentbench_list")["count"] == 0
+    with pytest.raises(GaltonError):
+        call(svc, "agentbench_status")
+    sub = call(svc, "agentbench_start", benchmarks=["lcb"], dry_run=True)["subsets"]["lcb"]
+    assert sorted(sub["dev"] + sub["test"]) == ["a-pass", "b-fail", "c-flaky"]
+    import os
+    os.environ["GALTON_AB_POLL_S"] = "0.05"
+    try:
+        card = call(svc, "agentbench_start", benchmarks=["lcb"], harnesses=["one", "two"], label="tools")
+        svc.agentbench.threads[card["id"]][0].join(30)
+    finally:
+        os.environ.pop("GALTON_AB_POLL_S", None)
+    status = call(svc, "agentbench_status", campaign=card["name"])["campaign"]
+    assert status["state"] == "done" and status["trials"]["verified"] == 6 and status["trials"]["none"] == 2
+    board = call(svc, "agentbench_result", split="")["board"]
+    assert board["ranking"]["lcb"][0]["harness"] == "one" and board["cells"]["lcb|one"]["passed"] == 2
+    cell = call(svc, "agentbench_cell", benchmark="lcb", harness="two")
+    assert {t["outcome"] for t in cell["trials"]} >= {"fail"}
+    assert "logs" in call(svc, "agentbench_trial", trial=cell["trials"][0]["id"])
+    assert call(svc, "agentbench_sync")["trials_read"] >= 6
+    assert call(svc, "agentbench_cancel", campaign=card["id"])["id"] == card["id"]
+    assert call(svc, "agentbench_list")["campaigns"][0]["id"] == card["id"]
+
+
 def test_every_tool_was_called():
     missing = sorted(set(TOOLS_BY_NAME) - CALLED)
     assert not missing, f"tools never called in this module: {missing}"

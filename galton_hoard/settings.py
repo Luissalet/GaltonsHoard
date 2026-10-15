@@ -90,6 +90,16 @@ SPECS: list[Spec] = [
     Spec("harnessbench.allow_external", "bool", False, "harness"),
     Spec("harnessbench.external", "str_list", [EXTERNAL_EXAMPLE], "harness"),
     Spec("harnessbench.external_timeout_s", "int", 600, "harness", low=10, high=7200),
+    Spec("agentbench.harnesses", "str_list", [], "agentbench"),
+    Spec("agentbench.runner", "str", "", "agentbench"),
+    Spec("agentbench.jobs_dir", "str", "", "agentbench"),
+    Spec("agentbench.datasets_dir", "str", "", "agentbench"),
+    Spec("agentbench.model", "str", "", "agentbench"),
+    Spec("agentbench.base_url", "str", "", "agentbench"),
+    Spec("agentbench.slots", "int", 8, "agentbench", low=1, high=64),
+    Spec("agentbench.per_cell", "int", 1, "agentbench", low=1, high=16),
+    Spec("agentbench.retries", "int", 2, "agentbench", low=0, high=5),
+    Spec("agentbench.time_scale", "float", 1.0, "agentbench", low=0.1, high=100),
 ]
 SPEC_BY_KEY = {s.key: s for s in SPECS}
 MASK = "…"

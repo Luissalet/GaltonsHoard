@@ -812,6 +812,127 @@ Annotations: readOnlyHint, idempotentHint.
 |---|---|---|
 | `limit` (integer) | no |  |
 
+## `agentbench_catalog`
+
+Agent bench: benchmarks, their task subsets and the configured agent harnesses. Catálogo del banco de agentes.
+
+Published agentic benchmarks (terminal work, repository fixes, multi-language edits, dialogues with tools, algorithmic problems), the fixed subset Galton uses of each with its dev and test split, and the harness lines of the setting agentbench.harnesses.
+Sinónimos: benchmarks de agentes, arneses reales, terminal, swe, polyglot, tau, livecodebench
+
+Annotations: readOnlyHint, idempotentHint.
+
+## `agentbench_start`
+
+Run real agent harnesses on published benchmarks with one model. Lanzar campaña de agentes.
+
+Each task runs in its own container: the harness is installed, works on the task, then the task's hidden tests decide. Same tasks, same model, same limits for every harness. Trials whose verifier never ran are None, not 0, and are retried. Runs in the background; dry_run shows the subsets.
+Sinónimos: comparar arneses, qué agente es mejor con este modelo, campaña, benchmark de agentes
+
+Annotations: openWorldHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `benchmarks` (array) | no | Benchmark ids from agentbench_catalog (tb2, swev, polyglot, tau3, lcb). Empty: all. |
+| `harnesses` (array) | no | Harness names from the setting agentbench.harnesses. Empty: every line that is switched on. |
+| `model` (string) | no | Model id the server knows. Empty: the setting agentbench.model. |
+| `base_url` (string) | no | Address of the server that serves it (common chat-completions protocol, ending in /v1). Empty: the setting agentbench.base_url. |
+| `k` (integer) | no | Attempts per task and harness. |
+| `splits` (array) | no | dev: the tasks a harness may be tuned on; test: only measured. |
+| `label` (string) | no |  |
+| `slots` (integer) | no | Trials in flight at once (0: the setting). |
+| `adopt` (string) | no | Name of a campaign whose jobs another process runs: only read its job folders, launch nothing. |
+| `dry_run` (boolean) | no | Only show the task subsets of each benchmark; start nothing. |
+
+## `agentbench_status`
+
+Progress of an agent-bench campaign. Estado de la campaña de agentes.
+
+Sinónimos: cómo va la campaña, progreso del banco de agentes
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `campaign` (string) | no | Campaign id or name. Empty: the running one, else the latest. |
+
+## `agentbench_result`
+
+Agent-bench board: pass rate per benchmark and harness, with ranking. Resultado de la campaña.
+
+Per cell: verified trials, pass rate with its 95 % interval, None trials apart, failure reasons, tokens, time. Per benchmark: ranking, the focus harness's paired wins and losses against each other harness with an exact sign test.
+Sinónimos: clasificación de arneses, quién gana, mapa de calor, comparación por tarea
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `campaign` (string) | no | Campaign id or name. Empty: the running one, else the latest. |
+| `split` ( \| dev \| test) | no | Only the trials of that split (empty: all). |
+| `focus` (string) | no | Harness compared, task by task, against every other one. |
+
+## `agentbench_cell`
+
+One cell of a campaign: every trial of a harness on a benchmark. Detalle de una celda.
+
+Sinónimos: qué tareas falló, por qué falló
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `campaign` (string) | no |  |
+| `benchmark` (string) | yes |  |
+| `harness` (string) | yes |  |
+
+## `agentbench_trial`
+
+One trial with the logs the harness and the verifier left. Detalle de una prueba con sus registros.
+
+Sinónimos: log del agente, salida de los tests, depurar arnés
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `trial` (integer) | yes | Trial id from agentbench_cell. |
+| `limit` (integer) | no | Characters kept from the end of each log file. |
+
+## `agentbench_sync`
+
+Read a campaign's job folders again into the database. Releer las carpetas de la campaña.
+
+Sinónimos: actualizar resultados
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `campaign` (string) | no | Campaign id or name. Empty: the running one, else the latest. |
+
+## `agentbench_cancel`
+
+Cancel an agent-bench campaign: trials already finished are kept. Cancelar campaña de agentes.
+
+Sinónimos: parar campaña
+
+Annotations: idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `campaign` (string) | no | Campaign id or name. Empty: the running one, else the latest. |
+
+## `agentbench_list`
+
+Recent agent-bench campaigns. Historial de campañas de agentes.
+
+Sinónimos: campañas anteriores
+
+Annotations: readOnlyHint, idempotentHint.
+
+| Argument | Required | Description |
+|---|---|---|
+| `limit` (integer) | no |  |
+
 ## REST routes for the UI
 
 - `GET /api/health`, `GET /api/status`
