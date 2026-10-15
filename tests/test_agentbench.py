@@ -89,6 +89,17 @@ def test_job_command_carries_tasks_model_kwargs_env_and_path(tmp_path):
     assert job.env["OPENAI_BASE_URL"] == "http://h:1/v1" and job.env["EXTRA_URL"] == "http://h:1" and job.env["PYTHONPATH"].startswith("/opt/agent")
 
 
+def test_a_benchmark_with_its_own_model_services_runs_them_on_the_campaign_model(tmp_path):
+    h = spec.parse_harness_line("x = some-agent")
+    kw = dict(exe="runner", harness=h, tasks=["a"], dataset_dir=tmp_path / "ds", jobs_dir=tmp_path / "jobs",
+              job_name="c1-tau3-x", model="glm", base_url="http://h:1/v1")
+    job = harbor.job_command(bench=spec.benchmark("tau3"), base_env={}, **kw)
+    assert job.env["TAU2_USER_MODEL"] == "openai/glm" and job.env["TAU2_NL_ASSERTIONS_MODEL"] == "openai/glm"
+    mine = harbor.job_command(bench=spec.benchmark("tau3"), base_env={"TAU2_USER_MODEL": "openai/other"}, **kw)
+    assert mine.env["TAU2_USER_MODEL"] == "openai/other"          # an explicit choice wins
+    assert "TAU2_USER_MODEL" not in harbor.job_command(bench=spec.benchmark("tb2"), base_env={}, **kw).env
+
+
 # ------------------------------------------------------------------ scoring
 def _t(bench, harness, task, ok, split="test"):
     return {"benchmark": bench, "harness": harness, "task": task, "split": split, "outcome": "pass" if ok else ("fail" if ok is False else "none"),

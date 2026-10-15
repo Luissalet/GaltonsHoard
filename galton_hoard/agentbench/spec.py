@@ -143,6 +143,9 @@ class Benchmark:
     timeout_multiplier: float = 1.0
     note: str = ""
     extra: dict[str, Any] = field(default_factory=dict)
+    #: environment for the benchmark's own services, ``{model}`` = the campaign's model (an
+    #: explicit variable in the caller's environment wins)
+    env: tuple[tuple[str, str], ...] = ()
 
     def info(self) -> dict[str, Any]:
         return {"id": self.id, "dataset": self.dataset, "title": self.title, "kind": self.kind, "n": self.n, "dev": self.dev, "test": self.n - self.dev,
@@ -160,6 +163,9 @@ CATALOGUE: tuple[Benchmark, ...] = (
               note="Exercism exercises in six languages; the agent edits the solution file, the unit tests decide."),
     Benchmark("tau3", "sierra-research/tau3-bench", "tau3-bench (retail, airline)", "tools_dialog", n=24, dev=8, include=("*retail*", "*airline*"),
               stratify=r"(retail|airline)", needs_mcp=True,
+              # the simulated customer and the judge of the agent's statements run on the
+              # campaign's own model, through the same OpenAI-compatible endpoint
+              env=(("TAU2_USER_MODEL", "openai/{model}"), ("TAU2_NL_ASSERTIONS_MODEL", "openai/{model}")),
               note="Customer-service dialogues with a simulated user and a policy; the database state and what the agent tells the user decide."),
     Benchmark("lcb", "livecodebench/livecodebench", "LiveCodeBench", "algorithmic", n=24, dev=8,
               note="Competitive programming problems released after the usual training cut-offs; hidden tests decide."),

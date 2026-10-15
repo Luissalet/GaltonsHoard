@@ -71,6 +71,8 @@ def job_command(*, exe: str, bench: Benchmark, harness: HarnessSpec, tasks: Iter
     base_v1 = base if base.endswith("/v1") else base + "/v1"
     env = dict(base_env if base_env is not None else os.environ)
     env.update({"OPENAI_BASE_URL": base_v1, "OPENAI_API_BASE": base_v1, "OPENAI_API_KEY": api_key, "PYTHONUTF8": "1", "PYTHONIOENCODING": "utf-8"})
+    for key, value in getattr(bench, "env", ()) or ():
+        env.setdefault(key, value.replace("{model}", model))
     for key, value in harness.env:
         env[key] = harness.render(value, model=model, base_url=base_url, api_key=api_key)
     if harness.path:
