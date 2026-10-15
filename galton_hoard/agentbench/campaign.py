@@ -23,6 +23,10 @@ from .harbor import CellJob, job_command, job_finished, read_job
 from .spec import Benchmark, HarnessSpec, read_dataset, select
 
 
+#: a cell whose runner dies this many times before writing anything is skipped
+MAX_LAUNCH_FAILURES = 3
+
+
 @dataclass
 class Cell:
     bench: Benchmark
@@ -83,6 +87,7 @@ class Campaign:
         self.launch = launch
         self.cells: list[Cell] = []
         self.procs: dict[str, subprocess.Popen] = {}
+        self.launch_failures: dict[str, int] = {}
 
     # -------------------------------------------------------------- plan
     def plan(self) -> list[Cell]:
@@ -170,6 +175,16 @@ class Campaign:
                     if self.on_trials:
                         self.on_trials(cell, self.trials(cell))
                     self.log(f"done {name} (exit {proc.returncode})")
+                    if proc.returncode and not (self.cfg.jobs_dir / name).exists():
+                        # The runner died before writing a job folder (the
+                        # harness did not import, a bad flag...): relaunching it
+                        # would fail the same way forever.
+                        fails = self.launch_failures.get(cell.key, 0) + 1
+                        self.launch_failures[cell.key] = fails
+                        if fails >= MAX_LAUNCH_FAILURES:
+                            cell.skipped = f"launch_failed: the runner exited {proc.returncode} {fails} times without starting (see {name}.log)"
+                            queue = [c for c in queue if c.key != cell.key]
+                            self.log(f"skip {cell.key}: {cell.skipped}")
             if self.on_tick:
                 try:
                     self.on_tick(self)

@@ -132,6 +132,23 @@ def test_a_campaign_runs_every_cell_retries_none_and_never_reruns_a_verdict(tmp_
     assert len(camp.all_trials()) == before
 
 
+def test_a_runner_that_dies_before_starting_is_given_up_after_a_few_launches(tmp_path):
+    bench = spec.benchmark("lcb")
+    _dataset(tmp_path / "ds", bench, ["a-pass"])
+    dead = tmp_path / "dead_runner.py"
+    dead.write_text("import sys\nprint(\"Failed to import module 'x'\")\nsys.exit(3)\n", encoding="utf-8")
+    logs: list[str] = []
+    cfg = CampaignConfig(name="c3", model="m", base_url="http://h:1/v1", slots=1, per_cell=1, retries=1, exe=str(dead),
+                         jobs_dir=tmp_path / "jobs", datasets_dir=tmp_path / "ds")
+    camp = Campaign(cfg, [bench], [spec.parse_harness_line("broken = x")], log=logs.append)
+    camp.plan()
+    done = threading.Event()
+    threading.Thread(target=lambda: (camp.run(poll_s=0.02), done.set()), daemon=True).start()
+    assert done.wait(20), "the campaign kept relaunching a runner that never starts"
+    assert sum(1 for m in logs if m.startswith("start ")) == 3
+    assert camp.cells[0].skipped.startswith("launch_failed")
+
+
 def test_a_benchmark_that_needs_mcp_skips_a_harness_without_it(tmp_path):
     bench = spec.benchmark("tau3")
     _dataset(tmp_path / "ds", bench, ["retail-1-pass"])
