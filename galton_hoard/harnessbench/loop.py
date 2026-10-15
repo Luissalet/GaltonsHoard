@@ -28,6 +28,7 @@ from .world import TOOL_SPECS, World
 Chat = Callable[[list[dict[str, Any]], list[dict[str, Any]]], Completion]
 
 OUTCOMES = ("pass", "fail_answer", "fail_format", "none")
+EMPTY_REPLY = "your reply was empty: write either the tool call in the required format or the final answer"
 TEXT_CAP = 2000
 RESULT_CAP = 600
 
@@ -120,6 +121,20 @@ def run_trial(task: dict[str, Any], harness: Harness, chat: Chat, *, api: str = 
                 break
             continue
         if not parsed.calls and not parsed.rejected:
+            if not (parsed.final or "").strip() and not (comp.text or "").strip():
+                # Nothing visible came back (some servers end the turn on a special token, or strip it): the model
+                # tried to act but the harness got no call and no answer. That is a format problem, not a wrong answer.
+                t.format_failures += 1
+                last_was_format = True
+                record["format_error"] = "empty reply"
+                thought = str(getattr(comp, "reasoning", "") or "")
+                if thought:
+                    record["reasoning"] = _short(thought, TEXT_CAP)
+                entries.append({"kind": "user", "msg": harness.format_error_message(EMPTY_REPLY)})
+                if t.format_failures >= max_format_errors:
+                    stop = "format_limit"
+                    break
+                continue
             final = parsed.final or ""
             last_was_format = False
             break

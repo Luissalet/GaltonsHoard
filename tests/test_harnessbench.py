@@ -543,3 +543,22 @@ def test_the_standalone_script_reports_a_dead_server_as_none(tmp_path):
     assert done.returncode == 0, done.stderr
     cell = json.loads(out.read_text(encoding="utf-8"))["cells"]["x"]["native_tools"]
     assert cell["pass_at_1"] is None and cell["none_n"] >= 1 and cell["valid"] == 0
+
+
+def test_an_empty_reply_is_a_format_failure_with_a_retry_not_a_wrong_answer():
+    """A server that ends the turn on a special token returns nothing visible: the model tried to act."""
+    task = next(t for t in TASKS if t["kind"] == "calc")
+    empty = run_trial(task, parse_harness_id("xml_text"),
+                      lambda m, t: Completion(text="", finish_reason="stop", reasoning="I should call the calculator."))
+    assert empty.outcome == "fail_format" and empty.reason == "format_limit"
+    assert empty.format_failures == 3 and empty.trace[0]["format_error"] == "empty reply"
+    assert "calculator" in empty.trace[0]["reasoning"]
+    oracle = agent_responder(accuracy=1.0)
+    replies = iter([None])
+
+    def once_empty(messages, tools):
+        if next(replies, "go") is None:
+            return Completion(text="", finish_reason="stop")
+        return _chat(oracle)(messages, tools)
+    recovered = run_trial(task, parse_harness_id("xml_text"), once_empty)
+    assert recovered.outcome == "pass" and recovered.format_failures == 1

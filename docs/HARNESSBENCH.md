@@ -24,6 +24,8 @@ Variants are suffixes of the id and combine: `json_text.long.trim` is valid.
 A reply without a tool call is the final answer. A reply that looks like a call and cannot be read, or a call the harness refuses before running it
 (unknown tool, missing or mistyped argument, arguments that are not valid JSON), is a **format failure**: the model is told why and may try again,
 up to `max_format_errors` (default 3), and the trial is counted apart from a call that ran and was merely wrong.
+An empty reply (no call and no answer, as when a server ends the turn on a special token such as a model's own tool-call token) is
+also a format failure, `empty reply` in the trace, with the model's reasoning when the server returned it.
 
 ### Command-line harnesses
 
